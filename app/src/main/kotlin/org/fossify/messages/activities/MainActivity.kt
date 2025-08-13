@@ -77,6 +77,10 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
+import android.view.Menu
+import android.view.MenuItem
+import org.fossify.messages.ui.TransactionActivity
+
 class MainActivity : SimpleActivity() {
     private val MAKE_DEFAULT_APP_REQUEST = 1
 
@@ -184,16 +188,20 @@ class MainActivity : SimpleActivity() {
             searchTextChanged(text)
         }
 
-        binding.mainMenu.getToolbar().setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.show_recycle_bin -> launchRecycleBin()
-                R.id.show_archived -> launchArchivedConversations()
-                R.id.settings -> launchSettings()
-                R.id.about -> launchAbout()
-                else -> return@setOnMenuItemClickListener false
-            }
-            return@setOnMenuItemClickListener true
+binding.mainMenu.getToolbar().setOnMenuItemClickListener { menuItem ->
+    when (menuItem.itemId) {
+        R.id.show_recycle_bin -> launchRecycleBin()
+        R.id.show_archived -> launchArchivedConversations()
+        R.id.settings -> launchSettings()
+        R.id.about -> launchAbout()
+        R.id.menu_transaction -> {
+            val intent = Intent(this, TransactionActivity::class.java)
+            startActivity(intent)
         }
+        else -> return@setOnMenuItemClickListener false
+    }
+    return@setOnMenuItemClickListener true
+}
     }
 
     private fun refreshMenuItems() {
@@ -693,4 +701,21 @@ class MainActivity : SimpleActivity() {
             checkWhatsNew(this, BuildConfig.VERSION_CODE)
         }
     }
+
+override fun onCreateOptionsMenu(menu: Menu): Boolean {
+    menu.add(Menu.NONE, R.id.menu_transaction, Menu.NONE, "Transactions")
+        .setIcon(R.drawable.ic_transaction)
+        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+    return true
+}
+
+override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    return when (item.itemId) {
+        R.id.menu_transaction -> {
+            startActivity(Intent(this, TransactionActivity::class.java))
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
+    }
+}
 }

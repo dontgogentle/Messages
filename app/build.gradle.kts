@@ -9,6 +9,21 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.googleServices)
+}
+
+println("Available plugin aliases: ${libs.plugins}")
+
+dependencies {
+    // Firebase BOM
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+
+    // Firebase Database
+    implementation("com.google.firebase:firebase-database-ktx")
+
+    // Other dependencies
+    // implementation("androidx.core:core-ktx:1.12.0")
+    // implementation("androidx.appcompat:appcompat:1.6.1")
 }
 
 val keystorePropertiesFile: File = rootProject.file("keystore.properties")

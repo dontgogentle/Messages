@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+    <color name="transaction_credit_background">#C8E6C9</color> <!-- Light Green -->
+    <color name="transaction_debit_background">#FFCDD2</color>  <!-- Light Red -->
 </resources>

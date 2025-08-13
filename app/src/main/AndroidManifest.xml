@@ -36,6 +36,8 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme">
 
+        <activity android:name=".ui.TransactionActivity" />
+
         <activity
             android:name=".activities.SplashActivity"
             android:exported="false"

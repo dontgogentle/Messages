@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/transactionCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:elevation="4dp"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <TextView android:id="@+id/nameText"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="#0D47A1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/transactionType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/amountText"
+            android:textStyle="bold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/dateText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/accountText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/transactionReference"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+            
+        <TextView android:id="@+id/upiText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/accountBalance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/receivedFrom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/transferredTo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/rawMessage"
+            android:layout_marginTop="8dp"
+            android:textSize="12sp"
+            android:textColor="#757575"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>
