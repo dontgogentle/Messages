@@ -2,4 +2,18 @@
 <resources>
     <color name="transaction_credit_background">#C8E6C9</color> <!-- Light Green -->
     <color name="transaction_debit_background">#FFCDD2</color>  <!-- Light Red -->
+
+    <color name="text_color_primary_on_light_bg">#DE000000</color> <!-- 87% black -->
+    <color name="text_color_secondary_on_light_bg">#8A000000</color> <!-- 54% black -->
+    <color name="text_color_hint_on_light_bg">#61000000</color> <!-- 38% black -->
+
+    <!-- Date Header Specific Colors -->
+    <color name="date_header_text_color_light">#FF6200EE</color> <!-- Purple 700. Changed from Dark Grey -->
+    <color name="date_header_background_light">#F0F0F0</color> <!-- Lighter Grey Background for Light Theme -->
+    <color name="date_header_text_color_dark">#FFBB86FC</color>   <!-- Purple 200. Changed from Light Grey -->
+    <color name="date_header_background_dark">#2C2C2C</color>   <!-- Darker Grey Background for Dark Theme -->
+
+    <!-- References for auto theme switching -->
+    <color name="date_header_text_color">@color/date_header_text_color_light</color>
+    <color name="date_header_background">@color/date_header_background_light</color>
 </resources>

@@ -5,6 +5,22 @@
     tools:ignore="AppCompatResource,AlwaysShowAction">
 
     <item
+        android:id="@+id/menu_sms"
+        android:title="Sms"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_conversations"
+        android:title="Conversations"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_transaction"
+        android:icon="@drawable/ic_info_vector" 
+        android:title="Transactions"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/show_recycle_bin"
         android:title="@string/show_the_recycle_bin"
         app:showAsAction="never" />
@@ -26,11 +42,4 @@
         android:title="@string/about"
         app:showAsAction="never" />
 
-    <!-- ✅ New Transactions menu item -->
-        <!-- android:icon="@drawable/ic_transaction" -->
-    <item
-        android:id="@+id/menu_transaction"
-        android:icon="@drawable/ic_info_vector"
-        android:title="Transactions"
-        app:showAsAction="never" />
 </menu>

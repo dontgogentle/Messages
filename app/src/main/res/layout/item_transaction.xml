@@ -1,69 +1,162 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/transactionCard"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    android:elevation="4dp"
-    android:padding="12dp">
+    android:orientation="vertical">
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/dateSectionHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:padding="8dp" 
+        android:textColor="@color/date_header_text_color"
+        android:background="@color/date_header_background"
+        android:visibility="gone" /> <!-- Initially gone, managed by adapter -->
 
-        <TextView android:id="@+id/nameText"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:textColor="#0D47A1"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+    <androidx.cardview.widget.CardView
+        android:id="@+id/transactionCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="4dp"
+        app:cardElevation="2dp">
 
-        <TextView android:id="@+id/transactionType"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
 
-        <TextView android:id="@+id/amountText"
-            android:textStyle="bold"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            <!-- Row 1: Name and Amount -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
 
-        <TextView android:id="@+id/dateText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+                <TextView
+                    android:id="@+id/nameText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/amountText"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/text_color_primary_on_light_bg"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
 
-        <TextView android:id="@+id/accountText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+                <TextView
+                    android:id="@+id/amountText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:textColor="@color/text_color_primary_on_light_bg"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
 
-        <TextView android:id="@+id/transactionReference"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-            
-        <TextView android:id="@+id/upiText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            <!-- Row 2: Date and Transaction Type -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp">
 
-        <TextView android:id="@+id/accountBalance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+                <TextView
+                    android:id="@+id/dateText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:textColor="@color/text_color_secondary_on_light_bg"
+                    android:textSize="14sp" />
 
-        <TextView android:id="@+id/receivedFrom"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+                <TextView
+                    android:id="@+id/transactionType"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:textColor="@color/text_color_secondary_on_light_bg"
+                    android:textSize="14sp" />
+            </RelativeLayout>
 
-        <TextView android:id="@+id/transferredTo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            <!-- Optional Fields -->
+            <TextView
+                android:id="@+id/accountText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_color_secondary_on_light_bg"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
-        <TextView android:id="@+id/rawMessage"
-            android:layout_marginTop="8dp"
-            android:textSize="12sp"
-            android:textColor="#757575"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            <TextView
+                android:id="@+id/transactionReference"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_color_secondary_on_light_bg"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
-    </LinearLayout>
-</androidx.cardview.widget.CardView>
+            <TextView
+                android:id="@+id/upiText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_color_secondary_on_light_bg"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/accountBalance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_color_secondary_on_light_bg"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/receivedFrom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_color_secondary_on_light_bg"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/transferredTo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_color_secondary_on_light_bg"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <!-- Raw Message Toggle -->
+            <TextView
+                android:id="@+id/rawMessageToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Show Raw Message"
+                android:textColor="@color/text_color_hint_on_light_bg" 
+                android:textSize="12sp"
+                android:textStyle="italic" />
+
+            <TextView
+                android:id="@+id/rawMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_color_secondary_on_light_bg"
+                android:textSize="12sp"
+                android:visibility="gone" /> <!-- Initially collapsed -->
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</LinearLayout>

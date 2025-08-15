@@ -1,0 +1,7 @@
+<resources>
+    <color name="date_header_text_color">@color/date_header_text_color_dark</color>
+    <color name="date_header_background">@color/date_header_background_dark</color>
+    <!-- Example dark theme overrides for transaction backgrounds -->
+    <!-- <color name="transaction_credit_background">#1A431A</color> --> <!-- Darker Green -->
+    <!-- <color name="transaction_debit_background">#611B1B</color> -->  <!-- Darker Red -->
+</resources>

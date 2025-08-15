@@ -10,16 +10,20 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.detekt)
     alias(libs.plugins.googleServices)
+    id("kotlin-parcelize") // Added kotlin-parcelize
 }
 
 println("Available plugin aliases: ${libs.plugins}")
 
 dependencies {
-    // Firebase BOM
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
 
     // Firebase Database
-    implementation("com.google.firebase:firebase-database-ktx")
+    implementation("com.google.firebase:firebase-database")
+
+    // Firebase Analytics (Added for diagnostics)
+    implementation("com.google.firebase:firebase-analytics")
+
 
     // Other dependencies
     // implementation("androidx.core:core-ktx:1.12.0")
@@ -52,7 +56,18 @@ android {
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
     }
+
+    splits {
+        abi {
+            isEnable = true
+            isUniversalApk = true
+        }
+    }
+
 
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
@@ -90,6 +105,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
             if (keystorePropertiesFile.exists() || hasSigningVars()) {
                 signingConfig = signingConfigs.getByName("release")
             }
