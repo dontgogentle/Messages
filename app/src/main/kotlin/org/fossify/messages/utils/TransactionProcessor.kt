@@ -187,44 +187,39 @@ object TransactionProcessor {
         })
     }
 
-    private fun pushSingleTransactionInternal(transactionInfoToPush: TransactionInfo, site: String) {
-        val pushSingleTag = "$TAG-PushSingle"
-        val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
+        private fun pushSingleTransactionInternal(transactionInfoToPush: TransactionInfo, site: String) {
+            val pushSingleTag = "$TAG-PushSingle"
+            val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
 
-        Log.d(pushSingleTag, "Attempting to push. Site: $site, Account: ${transactionInfoToPush.account}, Date: ${transactionInfoToPush.date}, Raw Preview: ${transactionInfoToPush.raw.take(50)}..., Deterministic ID: $deterministicId")
+            Log.d(pushSingleTag, "Attempting to push. Site: $site, Account: ${transactionInfoToPush.account}, Date: ${transactionInfoToPush.date}, Raw Preview: ${transactionInfoToPush.raw.take(50)}..., Deterministic ID: $deterministicId")
 
-        val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
-        Log.d(pushSingleTag, "Firebase Path for this transaction: $firebasePath")
+            val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
+            Log.d(pushSingleTag, "Firebase Path for this transaction: $firebasePath")
 
-        val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
+            val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
 
-        /*databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    Log.d(pushSingleTag, "Transaction ALREADY EXISTS in Firebase. Path: $firebasePath. Skipping push for ID: $deterministicId.")
-                } else  {*/
-                    Log.d(pushSingleTag, "Just Pushing Transaction DOES NOT EXIST. Pushing to Firebase. Path: $firebasePath for ID: $deterministicId.")
-        try {
-            pushToFirebase7(transactionInfoToPush)
-            databaseReference.setValue("XXYZIKIK")
-                .addOnSuccessListener {
-                    Log.d(pushSingleTag, "XXYFirebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath")
+            databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        Log.d(pushSingleTag, "Transaction ALREADY EXISTS in Firebase. Path: $firebasePath. Skipping push for ID: $deterministicId.")
+                    } else  {
+                        Log.d(pushSingleTag, "Just Pushing Transaction DOES NOT EXIST. Pushing to Firebase. Path: $firebasePath for ID: $deterministicId.")
+                        databaseReference.setValue(transactionInfoToPush)
+                            .addOnSuccessListener {
+                                Log.d(pushSingleTag, "Firebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e(pushSingleTag, "Firebase push FAILED for ID: $deterministicId. Path: $firebasePath", e)
+                            }
+                         }
                 }
-                .addOnFailureListener { e ->
-                    Log.e(pushSingleTag, "XXYFirebase push FAILED for ID: $deterministicId. Path: $firebasePath", e)
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(pushSingleTag, "Firebase read CANCELLED for ID: $deterministicId (while checking existence). Path: $firebasePath. Error: ${error.message}", error.toException())
                 }
-        } catch (e: Exception) {
-            Log.e(pushSingleTag, "XXYException thrown", e)
+            })
+            Log.d(pushSingleTag, "Listener attached for existence check for ID: $deterministicId. Path: $firebasePath.")
         }
-                /*}
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(pushSingleTag, "Firebase read CANCELLED for ID: $deterministicId (while checking existence). Path: $firebasePath. Error: ${error.message}", error.toException())
-            }
-        })*/
-        Log.d(pushSingleTag, "Listener attached for existence check for ID: $deterministicId. Path: $firebasePath.")
-    }
 
 
     fun pushToFirebase7(info: TransactionInfo) {
