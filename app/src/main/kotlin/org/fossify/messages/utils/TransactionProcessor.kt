@@ -98,49 +98,132 @@ object TransactionProcessor {
         return null
     }
 
-    fun pushToFirebase(transactionInfoToPush: TransactionInfo) { // Renamed parameter
-        val pushTag = "$TAG-Push"
-        val site = getSiteForAccount(transactionInfoToPush.account)
-        // Generate ID from the specific transactionInfoToPush instance for this call
-        val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
+    fun pushToFirebase(allPotentialTransactions: List<TransactionInfo>) {
+        val syncTag = "$TAG-SyncLogic"
+        if (allPotentialTransactions.isEmpty()) {
+            Log.d(syncTag, "No transactions to process.")
+            return
+        }
 
-        // Log details of the transaction being processed in this specific call
-        Log.d(pushTag, "Attempting to push. Raw Preview: ${transactionInfoToPush.raw.take(50)}..., Date: ${transactionInfoToPush.date}, Deterministic ID: $deterministicId")
+        val transactionsBySite = allPotentialTransactions.groupBy { getSiteForAccount(it.account) }
 
-        val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
-        Log.d(pushTag, "Firebase Path for this call: $firebasePath")
+        for ((site, siteTransactions) in transactionsBySite) {
+            if (site == "UNKNOWN") {
+                Log.w(syncTag, "Skipping ${siteTransactions.size} transactions for UNKNOWN site.")
+                continue
+            }
+            Log.d(syncTag, "Processing site: $site")
+            if (siteTransactions.isEmpty()) {
+                Log.d(syncTag, "No transactions for site $site after filtering.")
+                continue
+            }
+            val transactionsByDate = siteTransactions.groupBy { it.date }
+            val sortedDates = transactionsByDate.keys.sortedDescending()
 
-        val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
+            processDatesSequentiallyForSite(site, sortedDates, 0, transactionsByDate)
+        }
+    }
 
-        // It's crucial that this 'transactionInfoToPush' is the one captured by the listener.
-        // Kotlin's anonymous objects (like ValueEventListener here) capture the state of
-        // variables from their enclosing scope at the time of creation.
-        // Since transactionInfoToPush is a parameter, its reference is stable for this function call.
+    private fun processDatesSequentiallyForSite(
+        site: String,
+        dates: List<String>,
+        currentIndex: Int,
+        transactionsByDate: Map<String, List<TransactionInfo>> // Contains transactions only for the current 'site'
+    ) {
+        val siteDateTag = "$TAG-SiteDateProc"
+        if (currentIndex >= dates.size) {
+            Log.d(siteDateTag, "Site $site: Finished processing all dates or processing stopped earlier.")
+            return
+        }
 
-        databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
+        val dateStr = dates[currentIndex]
+        val deviceMessagesForDateAndSite = transactionsByDate[dateStr] ?: run {
+            Log.w(siteDateTag, "Site $site, Date $dateStr: No device messages found in map (should not happen if keys are correct). Skipping to next date.")
+            processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
+            return
+        }
+
+        // This check might be redundant if the above `run` block handles missing keys,
+        // but good for safety if a key exists with an empty list.
+        if (deviceMessagesForDateAndSite.isEmpty()) {
+            Log.d(siteDateTag, "Site $site, Date $dateStr: Device messages list is empty. Skipping to next date.")
+            processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
+            return
+        }
+
+        val firebasePathForDate = "$site/sms_by_date/$dateStr"
+        val dateMessagesRef = FirebaseDatabase.getInstance().getReference(firebasePathForDate)
+
+        Log.d(siteDateTag, "Site $site, Date: $dateStr. Querying Firebase count. Device messages for this date & site: ${deviceMessagesForDateAndSite.size}")
+
+
+//        for (transactionToPush in deviceMessagesForDateAndSite) {
+//            pushSingleTransactionInternal(transactionToPush, site)
+//        }
+
+        dateMessagesRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                // Log which transaction this onDataChange is for, using its unique ID and raw preview
-                Log.d(pushTag, "[onDataChange for ID: $deterministicId, Path: $firebasePath]. Raw preview: ${transactionInfoToPush.raw.take(30)}")
-                if (snapshot.exists()) {
-                    Log.d(pushTag, "Transaction ALREADY EXISTS in Firebase. Path: $firebasePath. Skipping push for ID: $deterministicId.")
+                val firebaseMessageCount = snapshot.childrenCount.toInt()
+                Log.d(siteDateTag, "Site $site, Date: $dateStr. Firebase count: $firebaseMessageCount. Device messages: ${deviceMessagesForDateAndSite.size}")
+
+                if (firebaseMessageCount < deviceMessagesForDateAndSite.size) {
+                    Log.d(siteDateTag, "Site $site, Date: $dateStr. Firebase has fewer messages (${firebaseMessageCount}) than device (${deviceMessagesForDateAndSite.size}). Pushing all ${deviceMessagesForDateAndSite.size} device messages for this date & site.")
+                    for (transactionToPush in deviceMessagesForDateAndSite) {
+                        pushSingleTransactionInternal(transactionToPush, site)
+                    }
+                    // After attempting to push for this date, continue to the previous day for this site
+                    Log.d(siteDateTag, "Site $site, Date: $dateStr. Finished pushing. Proceeding to next older date.")
+                    processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
                 } else {
-                    Log.d(pushTag, "Transaction DOES NOT EXIST. Pushing to Firebase. Path: $firebasePath for ID: $deterministicId.")
-                    // Use the 'transactionInfoToPush' captured by this specific listener instance
-                    databaseReference.setValue(transactionInfoToPush.copy(isRawExpanded = false))
-                        .addOnSuccessListener {
-                            Log.d(pushTag, "Firebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath")
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e(pushTag, "Firebase push FAILED for ID: $deterministicId. Path: $firebasePath", e)
-                        }
+                    Log.d(siteDateTag, "Site $site, Date: $dateStr. Firebase count ($firebaseMessageCount) is >= device count (${deviceMessagesForDateAndSite.size}). STOPPING further processing for this site.")
+                    // Stop condition met for this site.
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e(pushTag, "Firebase read CANCELLED for ID: $deterministicId. Path: $firebasePath. Error: ${error.message}", error.toException())
+                Log.e(siteDateTag, "Site $site, Date: $dateStr. Firebase read for count CANCELLED. Error: ${error.message}. Continuing to next older date for this site as a precaution.", error.toException())
+                processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
             }
         })
-        Log.d(pushTag, "Listener attached for ID: $deterministicId. Path: $firebasePath. Raw preview: ${transactionInfoToPush.raw.take(30)}")
+    }
+
+    private fun pushSingleTransactionInternal(transactionInfoToPush: TransactionInfo, site: String) {
+        val pushSingleTag = "$TAG-PushSingle"
+        val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
+
+        Log.d(pushSingleTag, "Attempting to push. Site: $site, Account: ${transactionInfoToPush.account}, Date: ${transactionInfoToPush.date}, Raw Preview: ${transactionInfoToPush.raw.take(50)}..., Deterministic ID: $deterministicId")
+
+        val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
+        Log.d(pushSingleTag, "Firebase Path for this transaction: $firebasePath")
+
+        val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
+
+        /*databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    Log.d(pushSingleTag, "Transaction ALREADY EXISTS in Firebase. Path: $firebasePath. Skipping push for ID: $deterministicId.")
+                } else  {*/
+                    Log.d(pushSingleTag, "Just Pushing Transaction DOES NOT EXIST. Pushing to Firebase. Path: $firebasePath for ID: $deterministicId.")
+        try {
+            pushToFirebase7(transactionInfoToPush)
+            databaseReference.setValue("XXYZIKIK")
+                .addOnSuccessListener {
+                    Log.d(pushSingleTag, "XXYFirebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath")
+                }
+                .addOnFailureListener { e ->
+                    Log.e(pushSingleTag, "XXYFirebase push FAILED for ID: $deterministicId. Path: $firebasePath", e)
+                }
+        } catch (e: Exception) {
+            Log.e(pushSingleTag, "XXYException thrown", e)
+        }
+                /*}
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(pushSingleTag, "Firebase read CANCELLED for ID: $deterministicId (while checking existence). Path: $firebasePath. Error: ${error.message}", error.toException())
+            }
+        })*/
+        Log.d(pushSingleTag, "Listener attached for existence check for ID: $deterministicId. Path: $firebasePath.")
     }
 
 
@@ -209,3 +292,4 @@ object TransactionProcessor {
         }
     }
 }
+

@@ -24,7 +24,7 @@ class MessagesApplication : Application() {
                 val firebaseDatabase = FirebaseDatabase.getInstance()
                 // Ensure this IP is correct for your setup.
                 // Your React Native app uses 100.120.198.49 from the Android Emulator.
-                firebaseDatabase.useEmulator("100.120.198.49", 9000)
+//                firebaseDatabase.useEmulator("100.120.198.49", 9000)
                 Log.d("MessagesApplication", "Firebase Database Emulator configured for 100.120.198.49:9000")
             } catch (e: Exception) {
                 Log.e("MessagesApplication", "Error configuring Firebase Database Emulator: ${e.message}", e)
