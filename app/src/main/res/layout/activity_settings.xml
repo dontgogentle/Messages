@@ -184,6 +184,36 @@
 
             </RelativeLayout>
 
+            <RelativeLayout
+                android:id="@+id/settings_default_activity_holder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:paddingStart="@dimen/activity_margin"
+                android:paddingEnd="@dimen/activity_margin"
+                android:paddingTop="@dimen/settings_item_padding"
+                android:paddingBottom="@dimen/settings_item_padding">
+
+                <org.fossify.commons.views.MyTextView
+                    android:id="@+id/settings_default_activity_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="@string/default_activity_on_login"
+                    android:textSize="@dimen/bigger_text_size" />
+
+                <org.fossify.commons.views.MyTextView
+                    android:id="@+id/settings_default_activity"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="@dimen/activity_margin"
+                    android:text="@string/conversations"
+                    android:textColor="?attr/colorAccent"
+                    android:textSize="@dimen/bigger_text_size" />
+            </RelativeLayout>
+
             <include
                 android:id="@+id/settings_general_settings_divider"
                 layout="@layout/divider" />

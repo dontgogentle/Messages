@@ -40,6 +40,7 @@ import org.fossify.messages.dialogs.ExportMessagesDialog
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.emptyMessagesRecycleBin
 import org.fossify.messages.extensions.messagesDB
+import org.fossify.messages.helpers.Config // Changed import
 import org.fossify.messages.helpers.FILE_SIZE_100_KB
 import org.fossify.messages.helpers.FILE_SIZE_1_MB
 import org.fossify.messages.helpers.FILE_SIZE_200_KB
@@ -117,6 +118,7 @@ class SettingsActivity : SimpleActivity() {
         setupManageBlockedKeywords()
         setupChangeDateTimeFormat()
         setupFontSize()
+        setupDefaultActivityPreference() // Added this line
         setupShowCharacterCounter()
         setupUseSimpleCharacters()
         setupSendOnEnter()
@@ -270,6 +272,31 @@ class SettingsActivity : SimpleActivity() {
                 config.fontSize = it as Int
                 settingsFontSize.text = getFontSizeText()
             }
+        }
+    }
+
+    private fun setupDefaultActivityPreference() = binding.apply {
+        settingsDefaultActivity.text = getDefaultActivityText()
+        settingsDefaultActivityHolder.setOnClickListener {
+            val items = arrayListOf(
+                RadioItem(Config.DEFAULT_ACTIVITY_CONVERSATIONS, getString(R.string.conversations)),
+                RadioItem(Config.DEFAULT_ACTIVITY_TRANSACTIONS, getString(R.string.transactions)),
+                RadioItem(Config.DEFAULT_ACTIVITY_TRANSACTIONS_FB, getString(R.string.transactions_in_fb))
+            )
+
+            RadioGroupDialog(this@SettingsActivity, items, config.defaultActivity) {
+                config.defaultActivity = it as Int
+                settingsDefaultActivity.text = getDefaultActivityText()
+            }
+        }
+    }
+
+    private fun getDefaultActivityText(): String {
+        return when (config.defaultActivity) {
+            Config.DEFAULT_ACTIVITY_TRANSACTIONS -> getString(R.string.transactions)
+            Config.DEFAULT_ACTIVITY_TRANSACTIONS_FB -> getString(R.string.transactions_in_fb)
+            Config.DEFAULT_ACTIVITY_CONVERSATIONS -> getString(R.string.conversations)
+            else -> getString(R.string.conversations) // Fallback for safety
         }
     }
 

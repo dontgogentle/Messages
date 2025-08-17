@@ -8,6 +8,11 @@ import org.fossify.messages.models.Conversation
 class Config(context: Context) : BaseConfig(context) {
     companion object {
         fun newInstance(context: Context) = Config(context)
+
+        const val DEFAULT_ACTIVITY_CONVERSATIONS = 0
+        const val DEFAULT_ACTIVITY_TRANSACTIONS = 1
+        const val DEFAULT_ACTIVITY_TRANSACTIONS_FB = 2
+        const val DEFAULT_ACTIVITY = "default_activity"
     }
 
     fun saveUseSIMIdAtNumber(number: String, SIMId: Int) {
@@ -87,6 +92,10 @@ class Config(context: Context) : BaseConfig(context) {
     fun removeBlockedKeyword(keyword: String) {
         blockedKeywords = blockedKeywords.minus(keyword)
     }
+
+    var defaultActivity: Int
+        get() = prefs.getInt(DEFAULT_ACTIVITY, DEFAULT_ACTIVITY_CONVERSATIONS)
+        set(defaultActivity) = prefs.edit().putInt(DEFAULT_ACTIVITY, defaultActivity).apply()
 
     var exportSms: Boolean
         get() = prefs.getBoolean(EXPORT_SMS, true)

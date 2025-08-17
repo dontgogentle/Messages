@@ -21,6 +21,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_show_fb_transactions"
+        android:title="Show FB Transactions"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/show_recycle_bin"
         android:title="@string/show_the_recycle_bin"
         app:showAsAction="never" />

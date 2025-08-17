@@ -73,13 +73,14 @@ import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
 import org.fossify.messages.models.Message
 import org.fossify.messages.models.SearchResult
+import org.fossify.messages.ui.TransactionActivity
+import org.fossify.messages.ui.TransactionsInFBActivity // Added import
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
 import android.view.Menu
 import android.view.MenuItem
-import org.fossify.messages.ui.TransactionActivity
 
 class MainActivity : SimpleActivity() {
     private val MAKE_DEFAULT_APP_REQUEST = 1
@@ -188,20 +189,24 @@ class MainActivity : SimpleActivity() {
             searchTextChanged(text)
         }
 
-binding.mainMenu.getToolbar().setOnMenuItemClickListener { menuItem ->
-    when (menuItem.itemId) {
-        R.id.show_recycle_bin -> launchRecycleBin()
-        R.id.show_archived -> launchArchivedConversations()
-        R.id.settings -> launchSettings()
-        R.id.about -> launchAbout()
-        R.id.menu_transaction -> {
-            val intent = Intent(this, TransactionActivity::class.java)
-            startActivity(intent)
+        binding.mainMenu.getToolbar().setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.show_recycle_bin -> launchRecycleBin()
+                R.id.show_archived -> launchArchivedConversations()
+                R.id.settings -> launchSettings()
+                R.id.about -> launchAbout()
+                R.id.menu_transaction -> { // This handles the programmatically added Transaction item
+                    val intent = Intent(this, TransactionActivity::class.java)
+                    startActivity(intent)
+                }
+                R.id.action_show_fb_transactions -> { // Added this case for item from menu_main.xml
+                    val intent = Intent(this, TransactionsInFBActivity::class.java)
+                    startActivity(intent)
+                }
+                else -> return@setOnMenuItemClickListener false
+            }
+            return@setOnMenuItemClickListener true
         }
-        else -> return@setOnMenuItemClickListener false
-    }
-    return@setOnMenuItemClickListener true
-}
     }
 
     private fun refreshMenuItems() {

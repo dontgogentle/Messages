@@ -104,6 +104,11 @@
     <string name="outgoing_messages">Outgoing messages</string>
     <string name="group_message_mms">Send group messages as MMS</string>
     <string name="send_long_message_mms">Send long messages as MMS</string>
+    <string name="default_activity_on_login">Default activity on login</string>
+    <string name="conversations">Conversations</string>
+    <string name="transactions">Transactions</string>
+    <string name="transactions_in_fb">Transactions In FB</string>
+    <string name="default_activity_dialog_title">Select Default Activity</string>
     <!-- Export / Import -->
     <string name="messages">Messages</string>
     <string name="keywords">Keywords</string>

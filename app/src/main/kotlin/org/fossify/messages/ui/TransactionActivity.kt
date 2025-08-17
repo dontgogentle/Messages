@@ -28,12 +28,12 @@ import org.fossify.messages.utils.TransactionProcessor // Import TransactionProc
 
 @Parcelize
 data class TransactionInfo(
-    val account: String,
-    val transactionType: String, // "CREDIT" or "DEBIT"
-    val amount: String,
-    val date: String,
-    val transactionReference: String,
-    val raw: String,
+    val account: String = "",
+    val transactionType: String = "", // "CREDIT" or "DEBIT"
+    val amount: String = "",
+    val date: String = "",
+    val transactionReference: String = "",
+    val raw: String = "",
     val upi: String? = null, // Not all transactions have UPI
     val name: String? = null, // For "Received From" or "Transferred To"
     val accountBalance: String? = null,
