@@ -161,43 +161,6 @@
         },
         {
             "client_info": {
-                "mobilesdk_app_id": "1:764445325332:android:4c359a02808c76dc",
-                "android_client_info": {
-                    "package_name": "com.bakavani.android.devel"
-                }
-            },
-            "oauth_client": [
-                {
-                    "client_id": "764445325332-5ipvgp30blf13mnbqju66i6nhq9mvj50.apps.googleusercontent.com",
-                    "client_type": 1,
-                    "android_info": {
-                        "package_name": "com.bakavani.android.devel",
-                        "certificate_hash": "eb4006226f6a2310a5d412a183471d0c6a2e3897"
-                    }
-                },
-                {
-                    "client_id": "764445325332-qresgkjdon2qulpqjq93pk88lbq4lt3p.apps.googleusercontent.com",
-                    "client_type": 3
-                }
-            ],
-            "api_key": [
-                {
-                    "current_key": "AIzaSyAvZUHM7dy-PYQgNTNdQ0pR0nM1XYdM-14"
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": [
-                        {
-                            "client_id": "764445325332-qresgkjdon2qulpqjq93pk88lbq4lt3p.apps.googleusercontent.com",
-                            "client_type": 3
-                        }
-                    ]
-                }
-            }
-        },
-        {
-            "client_info": {
                 "mobilesdk_app_id": "1:764445325332:android:17e3d5eaa6317c85f18f01",
                 "android_client_info": {
                     "package_name": "com.codingwithmitch.navigationcomponentsexample"
@@ -399,6 +362,35 @@
                 "mobilesdk_app_id": "1:764445325332:android:63a989c0e94da427f18f01",
                 "android_client_info": {
                     "package_name": "org.fossify.messages.debug"
+                }
+            },
+            "oauth_client": [
+                {
+                    "client_id": "764445325332-qresgkjdon2qulpqjq93pk88lbq4lt3p.apps.googleusercontent.com",
+                    "client_type": 3
+                }
+            ],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyAvZUHM7dy-PYQgNTNdQ0pR0nM1XYdM-14"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": [
+                        {
+                            "client_id": "764445325332-qresgkjdon2qulpqjq93pk88lbq4lt3p.apps.googleusercontent.com",
+                            "client_type": 3
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:764445325332:android:fd877ab127ca1c12f18f01",
+                "android_client_info": {
+                    "package_name": "org.fossify.messages.fbOnly"
                 }
             },
             "oauth_client": [

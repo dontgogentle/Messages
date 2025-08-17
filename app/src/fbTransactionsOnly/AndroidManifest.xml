@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Remove SMS and MMS permissions -->
+    <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_MMS" tools:node="remove" />
+    <!-- Other permissions like READ_CONTACTS, VIBRATE will remain -->
+
+    <application>
+        <!-- Make TransactionFBActivity the launcher -->
+        <activity
+            android:name="org.fossify.messages.ui.TransactionsInFBActivity"
+            android:exported="true"
+            android:theme="@style/Theme.App.FbOnly"> <!-- Apply the new theme here -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Modify SplashActivity to remove its launcher capabilities for this flavor -->
+        <activity
+            android:name="org.fossify.messages.activities.SplashActivity"
+            tools:node="merge">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+
+        <!--
+            ComposeActivity block removed as it was reported \"not found\"
+            or causing merger issues.
+        -->
+
+        <!-- Neutralize MainActivity's role as an SMS app -->
+        <activity android:name="org.fossify.messages.activities.MainActivity" tools:node="merge">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+
+        <!-- Standard SMS/MMS receivers - removing these if they exist -->
+        <receiver android:name="org.fossify.messages.receivers.SmsReceiver" tools:node="remove" tools:ignore="ManifestEntryMissingActivityAttributes"/>
+        <receiver android:name="org.fossify.messages.receivers.MmsReceiver" tools:node="remove" tools:ignore="ManifestEntryMissingActivityAttributes"/>
+
+    </application>
+</manifest>

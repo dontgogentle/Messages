@@ -117,6 +117,11 @@ android {
         register("core")
         register("foss")
         register("gplay")
+        register("fbTransactionsOnly") { // New flavor
+            dimension = "variants" // Assign to the existing dimension
+            applicationIdSuffix = ".fbOnly" // Optional: to differentiate the app
+            experimentalProperties["android.experimental.omitBaselineProfileFromBuild"] = true
+        }
     }
 
     sourceSets {
@@ -181,4 +186,32 @@ dependencies {
     implementation(libs.bundles.room)
     ksp(libs.androidx.room.compiler)
     detektPlugins(libs.compose.detekt)
+}
+
+project.afterEvaluate {
+    val targetVariantNames = listOf("fbTransactionsOnlyDebug", "fbTransactionsOnlyRelease")
+    println("AIDEMO: Listing tasks for variants: ${targetVariantNames.joinToString()}") // For verification
+    tasks.forEach { task ->
+        targetVariantNames.forEach { variantName ->
+            if (task.name.contains(variantName, ignoreCase = true)) { // Broad logging
+                println("AIDEMO: Found task potentially related to $variantName: ${task.name}")
+            }
+        }
+    }
+
+    targetVariantNames.forEach { variantName ->
+        tasks.matching { task ->
+            task.name.contains(variantName) && // Case-sensitive for variant name
+                (task.name.contains("ArtProfile", ignoreCase = true) || task.name.contains("StartupProfile", ignoreCase = true))
+        }.configureEach {
+            println("AIDEMO: Attempting to disable profile task: ${this.name} for variant $variantName")
+            enabled = false
+        }
+    }
+}
+
+androidComponents {
+    onVariants(selector().withName("fbTransactionsOnlyDebug")) { variant ->
+        variant.applicationId.set("org.fossify.messages.fbOnly")
+    }
 }

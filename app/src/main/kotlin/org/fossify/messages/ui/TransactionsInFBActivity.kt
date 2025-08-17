@@ -15,6 +15,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import org.fossify.messages.R
 import org.fossify.messages.activities.MainActivity
+import org.fossify.messages.BuildConfig // Import BuildConfig
 
 class TransactionsInFBActivity : AppCompatActivity() {
 
@@ -59,8 +60,16 @@ class TransactionsInFBActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu) // Reuse existing menu or create a new one
-        return true
+        // Check if the current flavor is fbTransactionsOnly
+        if (BuildConfig.FLAVOR == "fbTransactionsOnly") {
+            // Don't inflate or show any menu for this flavor
+            menu.clear() // Clear any items that might have been added by a superclass
+            return false // Return false to indicate no menu should be displayed
+        } else {
+            // Existing menu inflation logic for other flavors
+            menuInflater.inflate(R.menu.menu_main, menu) // Reuse existing menu or create a new one
+            return true
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

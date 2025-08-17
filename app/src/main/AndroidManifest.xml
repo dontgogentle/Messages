@@ -36,9 +36,9 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme">
 
-        <activity android:name=".ui.TransactionActivity"
+        <activity android:name=".ui.TransactionsInFBActivity"
             android:exported="true"
-            android:label="Sms">
+            android:label="Transactions">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -46,9 +46,10 @@
         </activity>
 
         <activity
-            android:name=".ui.TransactionsInFBActivity"
-            android:exported="false"
-            android:label="Transactions in FB" />
+            android:name=".ui.TransactionActivity"
+            android:exported="true"
+            tools:replace="android:exported"
+            android:label="Parsed SMSs" />
 
         <activity
             android:name=".activities.SplashActivity"

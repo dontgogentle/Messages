@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.App.FbOnly" parent="AppTheme.Base">
+        <item name="colorPrimary">@color/fb_only_toolbar_background</item>
+        <item name="colorPrimaryDark">@color/fb_only_toolbar_background</item>
+        <!-- If AppTheme.Base is a MaterialComponents theme, you might also use: -->
+        <!-- <item name="colorSurface">@color/fb_only_toolbar_background</item> -->
+    </style>
+</resources>

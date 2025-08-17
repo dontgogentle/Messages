@@ -6,4 +6,5 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">@dimen/normal_margin</item>
     </style>
+    <!-- The Theme.App.FbOnly style that was here is now removed -->
 </resources>
