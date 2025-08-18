@@ -8,8 +8,9 @@ import android.util.Log
 fun Context.isDefaultSmsApp(): Boolean {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         packageName == Telephony.Sms.getDefaultSmsPackage(this)
-        android.util.Log.w("SMS", "package is default app package Name:"+packageName)
-        android.util.Log.w("SMS", "package Telephony.Sms.getDefaultSmsPackage:"+Telephony.Sms.getDefaultSmsPackage(this))
+//        android.util.Log.w("SMS", "package is default app package Name:"+packageName)
+//        android.util.Log.w("SMS", "package Telephony.Sms.getDefaultSmsPackage:"+Telephony.Sms.getDefaultSmsPackage(this))
+//        android.util.Log.w("SMS", "== result:"+(packageName == Telephony.Sms.getDefaultSmsPackage(this)))
         return true
     } else {
         // For versions prior to KitKat, determining the default SMS app is more complex.
