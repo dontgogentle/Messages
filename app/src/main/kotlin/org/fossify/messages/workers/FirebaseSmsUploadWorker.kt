@@ -83,7 +83,7 @@ class FirebaseSmsUploadWorker(appContext: Context, workerParams: WorkerParameter
                 // 2. If parsing is successful, push it to Firebase
                 // pushToFirebase expects a List<TransactionInfo>
                 TransactionProcessor.pushToFirebase(listOf(transactionInfo))
-                Log.d("FirebaseSmsUploadWorker", "Successfully parsed and initiated push for message from $sender, parsed transactionInfo:"+transactionInfo)
+                Log.d("FirebaseSmsUploadWorker", "Successfully parsed and initiated push for message from $sender")
                 showNormalNotification("SMS from $sender uploaded to Firebase.")
                 Result.success()
             } else {
