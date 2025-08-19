@@ -1,6 +1,8 @@
 package org.fossify.messages.utils
 
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -169,7 +171,7 @@ object TransactionProcessor {
                 if (firebaseMessageCount < deviceMessagesForDateAndSite.size) {
                     Log.d(siteDateTag, "Site $site, Date: $dateStr. Firebase has fewer messages (${firebaseMessageCount}) than device (${deviceMessagesForDateAndSite.size}). Pushing all ${deviceMessagesForDateAndSite.size} device messages for this date & site.")
                     for (transactionToPush in deviceMessagesForDateAndSite) {
-                        pushSingleTransactionInternal(transactionToPush, site)
+                        pushSingleTransactionInternal(null,transactionToPush, site)
                     }
                     // After attempting to push for this date, continue to the previous day for this site
                     Log.d(siteDateTag, "Site $site, Date: $dateStr. Finished pushing. Proceeding to next older date.")
@@ -187,7 +189,7 @@ object TransactionProcessor {
         })
     }
 
-        private fun pushSingleTransactionInternal(transactionInfoToPush: TransactionInfo, site: String) {
+        public fun pushSingleTransactionNoCheck(context: Context, transactionInfoToPush: TransactionInfo, site: String) {
             val pushSingleTag = "$TAG-PushSingle"
             val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
 
@@ -195,6 +197,34 @@ object TransactionProcessor {
 
             val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
             Log.d(pushSingleTag, "Firebase Path for this transaction: $firebasePath")
+//            Toast.makeText(context, "Firebase Path: $firebasePath", Toast.LENGTH_SHORT).show()
+
+            val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
+
+            Log.d(pushSingleTag, "Just Pushing Transaction DOES NOT EXIST. Pushing to Firebase. Path: $firebasePath for ID: $deterministicId.")
+            databaseReference.setValue(transactionInfoToPush)
+                .addOnSuccessListener {
+                    Log.d(pushSingleTag, "Firebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath")
+//                                Toast.makeText(context, "Firebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    {
+                        Log.e(pushSingleTag, "Firebase push FAILED for ID: $deterministicId. Path: $firebasePath", e)
+//                                    Toast.makeText(context, "Firebase push FAILED for ID: $deterministicId. Path: $firebasePath", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            Log.d(pushSingleTag, "Listener attached for existence check for ID: $deterministicId. Path: $firebasePath.")
+        }
+
+        public fun pushSingleTransactionInternal(context: Context?, transactionInfoToPush: TransactionInfo, site: String) {
+            val pushSingleTag = "$TAG-PushSingle"
+            val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
+
+            Log.d(pushSingleTag, "Attempting to push. Site: $site, Account: ${transactionInfoToPush.account}, Date: ${transactionInfoToPush.date}, Raw Preview: ${transactionInfoToPush.raw.take(50)}..., Deterministic ID: $deterministicId")
+
+            val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
+            Log.d(pushSingleTag, "Firebase Path for this transaction: $firebasePath")
+            if (context != null) Toast.makeText(context, "Firebase Path: $firebasePath", Toast.LENGTH_SHORT).show()
 
             val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
 

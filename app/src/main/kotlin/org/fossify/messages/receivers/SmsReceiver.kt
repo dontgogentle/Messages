@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.provider.Telephony
+import android.util.Log
 import org.fossify.commons.extensions.baseConfig
 import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.isNumberBlocked
@@ -17,6 +18,8 @@ import org.fossify.messages.extensions.*
 import org.fossify.messages.helpers.ReceiverUtils.isMessageFilteredOut
 import org.fossify.messages.helpers.refreshMessages
 import org.fossify.messages.models.Message
+import org.fossify.messages.ui.TransactionInfo
+import org.fossify.messages.utils.TransactionProcessor
 
 class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -113,6 +116,19 @@ class SmsReceiver : BroadcastReceiver() {
                     }
                     refreshMessages()
                     context.showReceivedMessageNotification(newMessageId, address, body, threadId, bitmap)
+
+                    //Let us add the message to the firebase rtb
+                    val parsed = TransactionProcessor.parseMessage(body);
+//                    val localTransactionsBatch = mutableListOf<TransactionInfo>()
+
+                    if (parsed != null) {
+//                        localTransactionsBatch.add(parsed);
+//                        TransactionProcessor.pushToFirebase(localTransactionsBatch.toList())
+//                        Toast.makeText(context, "Message processed, sent to firebase", Toast.LENGTH_SHORT).show()
+//                        TransactionProcessor.pushSingleTransactionInternal(context,parsed, "J5")
+                        Log.d("SmsReceiver", "Message processed, sent to firebase")
+                        TransactionProcessor.pushSingleTransactionNoCheck(context,parsed, "J5")
+                    }
                 }
             }
         }

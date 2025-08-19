@@ -160,6 +160,9 @@ class TransactionActivity : AppCompatActivity() {
 
     private fun loadTransactions() {
         val tag = "TransactionActivityLoad"
+        Log.d(tag, "Not Starting to load SMS transactions...")
+        if (true) return
+
         Log.d(tag, "Starting to load SMS transactions...")
         transactions.clear()
 
