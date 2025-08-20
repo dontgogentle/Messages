@@ -1,328 +1,207 @@
 package org.fossify.messages.ui
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
-import androidx.cardview.widget.CardView
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
-import org.fossify.messages.BuildConfig
 import org.fossify.messages.R
-import org.fossify.messages.activities.MainActivity
+import org.fossify.messages.databinding.ActivityTransactionsInFbBinding
+import java.util.Calendar
 import java.text.SimpleDateFormat
-import java.util.*
-
-// Assuming TransactionInfo is correctly defined in TransactionActivity.kt as per Step 1:
-// data class TransactionInfo(
-//     var id: String? = null,
-//     var strDateInMessage: String? = "", // For "dd-MMM-yy" string from SMS
-//     var date: Long? = null,             // For epoch timestamp
-//     val account: String = "",
-//     val transactionType: String = "",
-//     val amount: String = "",
-//     val transactionReference: String = "",
-//     val raw: String = "",
-//     val upi: String? = null,
-//     val name: String? = null,
-//     val accountBalance: String? = null,
-//     val receivedFrom: String? = null,
-//     val transferredTo: String? = null,
-//     var isRawExpanded: Boolean = false
-// )
+import java.util.Date
+import java.util.Locale // Added for SimpleDateFormat Locale
+import org.fossify.messages.BuildConfig // Replace org.fossify.messages with your actual applicationId
 
 class TransactionsInFBActivity : AppCompatActivity() {
 
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var adapter: TransactionsAdapterFB
-    private var transactions = mutableListOf<TransactionInfo>()
+    private lateinit var binding: ActivityTransactionsInFbBinding
     private lateinit var database: DatabaseReference
-    private val todayTransactionsListenerMap = mutableMapOf<String, TransactionInfo>()
-    private var todayValueEventListener: ValueEventListener? = null
-    private lateinit var todayRef: Query
+    private lateinit var transactionsRecyclerView: RecyclerView
+    private lateinit var adapter: TransactionsAdapterFB
+    private var transactionsList = mutableListOf<TransactionInfo>()
+    // Removed: private lateinit var fab: FloatingActionButton
 
-    companion object {
-        private const val TAG = "TransactionsInFB"
-        private val FIREBASE_DATE_FORMAT = SimpleDateFormat("dd-MMM-yy", Locale.ENGLISH)
-        private const val NOTIFICATION_CHANNEL_ID = "transactions_channel"
-    }
+    // Flag to control whether to use Firebase or sample data
+    private val USE_FIREBASE_DATA = !BuildConfig.DEBUG
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_transactions_in_fb) // Ensure you have this layout
+        binding = ActivityTransactionsInFbBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        val toolbar: Toolbar = findViewById(R.id.toolbar_fb) // Ensure you have this ID
-        setSupportActionBar(toolbar)
-        supportActionBar?.title = "Transactions from Firebase"
+        setSupportActionBar(binding.toolbarFb)
+        supportActionBar?.title = "Transactions (FB)"
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        recyclerView = findViewById(R.id.transactionsRecyclerViewFB) // Ensure you have this ID
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = TransactionsAdapterFB(transactions)
-        recyclerView.adapter = adapter
+        // Removed FAB initialization and OnClickListener
+        // fab = binding.fabNewTransactionFb
+        // fab.setOnClickListener {
+        //     // ...
+        // }
 
-        database = FirebaseDatabase.getInstance().getReference("J5/sms_by_date")
-        loadTransactionsFromFB()
-        createNotificationChannel()
-    }
+        setupRecyclerView()
 
-    private fun parseFirebaseDate(dateString: String?): Long? {
-        if (dateString == null) return null
-        return try {
-            FIREBASE_DATE_FORMAT.parse(dateString)?.time
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse date string: $dateString", e)
-            null
+        if (USE_FIREBASE_DATA) {
+            database = FirebaseDatabase.getInstance().getReference("transactions")
+            loadTransactionsFromFB()
+            setupTodayTransactionsListener()
+        } else {
+            Log.d("TransactionsInFB", "Using sample data for testing.")
+            val sampleData = getSampleTransactionData()
+            adapter.updateData(sampleData) // Assuming adapter.updateData handles sorting and headers
+            binding.progressBarFb.visibility = View.GONE
+            if (sampleData.isEmpty()) {
+                binding.tvNoTransactionsFb.visibility = View.VISIBLE
+                transactionsRecyclerView.visibility = View.GONE
+            } else {
+                binding.tvNoTransactionsFb.visibility = View.GONE
+                transactionsRecyclerView.visibility = View.VISIBLE
+            }
         }
     }
 
-    private fun isTransactionForToday(transactionTimestamp: Long?): Boolean {
-        if (transactionTimestamp == null) return false
-        val todayStart = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-        return transactionTimestamp >= todayStart
+    private fun setupRecyclerView() {
+        transactionsRecyclerView = binding.recyclerViewTransactionsFb
+        transactionsRecyclerView.layoutManager = LinearLayoutManager(this)
+        // Initialize adapter with an empty list first
+        adapter = TransactionsAdapterFB(emptyList()) // Pass emptyList to constructor
+        transactionsRecyclerView.adapter = adapter
     }
 
+    private fun getSampleTransactionData(): List<TransactionInfo> {
+        val sampleList = mutableListOf<TransactionInfo>()
+        val calendar = Calendar.getInstance()
+        val sdf = SimpleDateFormat("dd MMM yy, hh:mm a", Locale.getDefault())
+
+        // Today's transactions
+        calendar.set(Calendar.HOUR_OF_DAY, 10)
+        calendar.set(Calendar.MINUTE, 0)
+        sampleList.add(TransactionInfo(
+            id = "sample1", name = "Coffee Shop", amount = "₹150.00", date = calendar.timeInMillis,
+            transactionType = "debit", raw = "Debit from XXX123 for Coffee Shop Ref 9876",
+            strDateInMessage = sdf.format(calendar.time),
+            account = "XX1234", transactionReference = "9876", upi = "coffeeshop@upi", accountBalance = "₹4850.00", isRawExpanded = false
+        ))
+        calendar.set(Calendar.HOUR_OF_DAY, 14)
+        sampleList.add(TransactionInfo(
+            id = "sample2", name = "Salary Credit", amount = "₹50000.00", date = calendar.timeInMillis,
+            transactionType = "credit", raw = "Credit to XXX123 Salary Ref 1234. Avl Bal 50000.00",
+            strDateInMessage = sdf.format(calendar.time),
+            account = "XX1234", transactionReference = "1234", upi = "", accountBalance = "₹50000.00", isRawExpanded = false
+        ))
+
+        // Yesterday's transactions
+        calendar.add(Calendar.DAY_OF_YEAR, -1)
+        calendar.set(Calendar.HOUR_OF_DAY, 18)
+        sampleList.add(TransactionInfo(
+            id = "sample3", name = "Grocery Store", amount = "₹2500.00", date = calendar.timeInMillis,
+            transactionType = "debit", raw = "Spent at BigBasket Ref 5555",
+            strDateInMessage = sdf.format(calendar.time),
+            account = "XX5678", transactionReference = "5555", upi = "bigbasket@scanner", accountBalance = "₹2500.00", isRawExpanded = false
+        ))
+
+        // Two days ago
+        calendar.add(Calendar.DAY_OF_YEAR, -1)
+        calendar.set(Calendar.HOUR_OF_DAY, 9)
+        sampleList.add(TransactionInfo(
+            id = "sample4", name = "Online Subscription", amount = "₹499.00", date = calendar.timeInMillis,
+            transactionType = "debit", raw = "Netflix recurring payment",
+            strDateInMessage = sdf.format(calendar.time),
+            account = "XX1234", transactionReference = "NFX1122", upi = "", accountBalance = "₹2001.00", isRawExpanded = false
+        ))
+        calendar.set(Calendar.HOUR_OF_DAY, 11)
+        sampleList.add(TransactionInfo(
+            id = "sample5", name = "Friend Transfer", amount = "₹1000.00", date = calendar.timeInMillis,
+            transactionType = "credit", raw = "Received from John Doe",
+            strDateInMessage = sdf.format(calendar.time),
+            account = "XX1234", transactionReference = "IMPS7788", upi = "john@upi", accountBalance = "₹3001.00", isRawExpanded = false
+        ))
+
+        return sampleList
+    }
+
+
     private fun loadTransactionsFromFB() {
-        // Listener for initial load of all transactions (excluding today's for the main list, handled by separate listener)
-        database.addListenerForSingleValueEvent(object : ValueEventListener {
+        binding.progressBarFb.visibility = View.VISIBLE
+        database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val historicalTransactions = mutableListOf<TransactionInfo>()
-                for (dateGroupSnapshot in snapshot.children) { // "dd-MMM-yy"
-                    for (entrySnapshot in dateGroupSnapshot.children) { // Transaction ID
-                        val id = entrySnapshot.key
-                        if (id == null) {
-                            Log.w(TAG, "Skipping transaction with null ID")
-                            continue
+                transactionsList.clear()
+                for (transactionSnapshot in snapshot.children) {
+                    val transaction = transactionSnapshot.getValue(TransactionInfo::class.java)
+                    transaction?.let {
+                        if (it.id == null || it.id!!.isEmpty()) {
+                            it.id = transactionSnapshot.key
                         }
-
-                        val firebaseDateValue = entrySnapshot.child("date").getValue()
-                        val firebaseStrDateInMessage = entrySnapshot.child("strDateInMessage").getValue(String::class.java)
-
-                        var finalTimestamp: Long? = null
-                        var finalStrDate: String? = null
-
-                        if (firebaseDateValue is Long) { // New format
-                            finalTimestamp = firebaseDateValue
-                            finalStrDate = firebaseStrDateInMessage
-                        } else if (firebaseDateValue is String) { // Old format
-                            finalStrDate = firebaseDateValue
-                            finalTimestamp = parseFirebaseDate(finalStrDate)
-                        } else { // Fallback or unknown
-                            if (firebaseStrDateInMessage != null) {
-                                finalStrDate = firebaseStrDateInMessage
-                                finalTimestamp = parseFirebaseDate(finalStrDate)
-                            } else {
-                                Log.e(TAG, "Date info missing or unexpected for ID: $id. Path: ${entrySnapshot.ref.path}")
-                            }
-                        }
-
-                        // Fetch all fields for TransactionInfo
-                        val account = entrySnapshot.child("account").getValue(String::class.java) ?: ""
-                        val transactionType = entrySnapshot.child("transactionType").getValue(String::class.java) ?: ""
-                        val amount = entrySnapshot.child("amount").getValue(String::class.java) ?: ""
-                        val transactionReference = entrySnapshot.child("transactionReference").getValue(String::class.java) ?: ""
-                        val raw = entrySnapshot.child("raw").getValue(String::class.java) ?: ""
-                        val upi = entrySnapshot.child("upi").getValue(String::class.java)
-                        val name = entrySnapshot.child("name").getValue(String::class.java)
-                        val accountBalance = entrySnapshot.child("accountBalance").getValue(String::class.java)
-                        val receivedFrom = entrySnapshot.child("receivedFrom").getValue(String::class.java)
-                        val transferredTo = entrySnapshot.child("transferredTo").getValue(String::class.java)
-                        val isRawExpanded = entrySnapshot.child("isRawExpanded").getValue(Boolean::class.java) ?: false
-
-                        val transaction = TransactionInfo(
-                            id = id,
-                            strDateInMessage = finalStrDate,
-                            date = finalTimestamp,
-                            account = account,
-                            transactionType = transactionType,
-                            amount = amount,
-                            transactionReference = transactionReference,
-                            raw = raw,
-                            upi = upi,
-                            name = name,
-                            accountBalance = accountBalance,
-                            receivedFrom = receivedFrom,
-                            transferredTo = transferredTo,
-                            isRawExpanded = isRawExpanded
-                        )
-                        historicalTransactions.add(transaction)
+                        transactionsList.add(it)
                     }
                 }
-                transactions.clear()
-                transactions.addAll(historicalTransactions)
-                adapter.updateData(transactions) // Adapter sorts by date (timestamp)
-                Log.d(TAG, "Loaded ${historicalTransactions.size} initial transactions from Firebase.")
-                setupTodayTransactionsListener() // Setup listener for today after initial load
+                // Assuming adapter.updateData handles sorting and any header generation
+                adapter.updateData(transactionsList)
+                binding.progressBarFb.visibility = View.GONE
+                if (transactionsList.isEmpty()) {
+                    binding.tvNoTransactionsFb.visibility = View.VISIBLE
+                    transactionsRecyclerView.visibility = View.GONE
+                } else {
+                    binding.tvNoTransactionsFb.visibility = View.GONE
+                    transactionsRecyclerView.visibility = View.VISIBLE
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to load initial transactions", error.toException())
+                Log.e("TransactionsInFB", "Failed to load transactions", error.toException())
+                binding.progressBarFb.visibility = View.GONE
+                binding.tvNoTransactionsFb.text = "Failed to load data. Please try again."
+                binding.tvNoTransactionsFb.visibility = View.VISIBLE
+                transactionsRecyclerView.visibility = View.GONE
             }
         })
     }
 
     private fun setupTodayTransactionsListener() {
-        val todayDateStr = SimpleDateFormat("dd-MMM-yy", Locale.ENGLISH).format(Date())
-        todayRef = database.child(todayDateStr)
+        val todayStartTimestamp = getStartOfDay(System.currentTimeMillis())
+        val query = database.orderByChild("date").startAt(todayStartTimestamp.toDouble())
 
-        todayValueEventListener?.let { todayRef.removeEventListener(it) } // Remove previous listener if any
-
-        todayValueEventListener = object : ValueEventListener {
+        query.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                var newNotificationOccurred = false
-                val currentTodayTransactions = mutableMapOf<String, TransactionInfo>()
-
-                for (entrySnapshot in snapshot.children) { // Transaction ID
-                    val id = entrySnapshot.key
-                    if (id == null) {
-                        Log.w(TAG, "Skipping today's transaction with null ID")
-                        continue
-                    }
-
-                    val firebaseDateValue = entrySnapshot.child("date").getValue()
-                    val firebaseStrDateInMessage = entrySnapshot.child("strDateInMessage").getValue(String::class.java)
-
-                    var finalTimestamp: Long? = null
-                    var finalStrDate: String? = null
-
-                    if (firebaseDateValue is Long) { // New format
-                        finalTimestamp = firebaseDateValue
-                        finalStrDate = firebaseStrDateInMessage
-                    } else if (firebaseDateValue is String) { // Old format
-                        finalStrDate = firebaseDateValue
-                        finalTimestamp = parseFirebaseDate(finalStrDate)
-                    } else { // Fallback or unknown
-                        if (firebaseStrDateInMessage != null) {
-                            finalStrDate = firebaseStrDateInMessage
-                            finalTimestamp = parseFirebaseDate(finalStrDate)
-                        } else {
-                            Log.e(TAG, "Today's Date info missing or unexpected for ID: $id. Path: ${entrySnapshot.ref.path}")
-                        }
-                    }
-
-                    // Fetch all fields for TransactionInfo
-                    val account = entrySnapshot.child("account").getValue(String::class.java) ?: ""
-                    val transactionType = entrySnapshot.child("transactionType").getValue(String::class.java) ?: ""
-                    val amount = entrySnapshot.child("amount").getValue(String::class.java) ?: ""
-                    val transactionReference = entrySnapshot.child("transactionReference").getValue(String::class.java) ?: ""
-                    val raw = entrySnapshot.child("raw").getValue(String::class.java) ?: ""
-                    val upi = entrySnapshot.child("upi").getValue(String::class.java)
-                    val name = entrySnapshot.child("name").getValue(String::class.java)
-                    val accountBalance = entrySnapshot.child("accountBalance").getValue(String::class.java)
-                    val receivedFrom = entrySnapshot.child("receivedFrom").getValue(String::class.java)
-                    val transferredTo = entrySnapshot.child("transferredTo").getValue(String::class.java)
-                    val isRawExpanded = entrySnapshot.child("isRawExpanded").getValue(Boolean::class.java) ?: false
-
-                    val transaction = TransactionInfo(
-                        id = id,
-                        strDateInMessage = finalStrDate,
-                        date = finalTimestamp,
-                        account = account,
-                        transactionType = transactionType,
-                        amount = amount,
-                        transactionReference = transactionReference,
-                        raw = raw,
-                        upi = upi,
-                        name = name,
-                        accountBalance = accountBalance,
-                        receivedFrom = receivedFrom,
-                        transferredTo = transferredTo,
-                        isRawExpanded = isRawExpanded
-                    )
-
-                    currentTodayTransactions[id] = transaction
-
-                    if (!todayTransactionsListenerMap.containsKey(id) && isTransactionForToday(transaction.date)) {
-                        showTransactionNotification(transaction)
-                        newNotificationOccurred = true
-                    }
-                }
-
-                // Update master list: remove all old today's, add current today's
-                transactions.removeAll { tran -> isTransactionForToday(tran.date) && tran.strDateInMessage == todayDateStr }
-                transactions.addAll(currentTodayTransactions.values)
-
-                // Update the map for the next comparison
-                todayTransactionsListenerMap.clear()
-                todayTransactionsListenerMap.putAll(currentTodayTransactions.filter { isTransactionForToday(it.value.date) })
-
-                adapter.updateData(transactions) // Adapter sorts by date (timestamp)
-                if (newNotificationOccurred) {
-                    Log.d(TAG, "Processed today's transactions updates, new notifications shown.")
-                }
+                Log.d("TransactionsInFB", "Today's transactions updated: ${snapshot.childrenCount} items")
+                // Here, you might want to specifically update the adapter with today's transactions
+                // or merge them intelligently into the existing list if the main listener
+                // isn't catching these updates efficiently for some reason.
+                // For now, this just logs. The main listener should ideally handle all updates.
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to listen for today's transactions", error.toException())
+                Log.e("TransactionsInFB", "Failed to listen for today's transactions", error.toException())
             }
-        }
-        todayRef.addValueEventListener(todayValueEventListener!!)
+        })
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = getString(R.string.channel_name) // Define in strings.xml
-            val descriptionText = getString(R.string.channel_description) // Define in strings.xml
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-            }
-            val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
+    private fun getStartOfDay(timestamp: Long): Long {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
 
-    private fun showTransactionNotification(transaction: TransactionInfo) {
-        val intent = Intent(this, TransactionsInFBActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
-        val notificationTitle = "New Transaction" // Using default as sender is not in TransactionInfo
-        val notificationText = transaction.raw.ifEmpty { "Transaction details received." } // Using raw as messageBody is not in TransactionInfo
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+//        menuInflater.inflate(R.menu.menu_transactions_fb, menu)
+//        return true
 
-        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_message) // Ensure you have this drawable
-            .setContentTitle(notificationTitle)
-            .setContentText(notificationText)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(transaction.id.hashCode(), builder.build()) // Use transaction id hash for unique notification
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        todayValueEventListener?.let { todayRef.removeEventListener(it) }
-    }
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Check if the current flavor is fbTransactionsOnly
         if (BuildConfig.FLAVOR == "fbTransactionsOnly") {
+            menuInflater.inflate(R.menu.menu_transactions_fb, menu)
             // Don't inflate or show any menu for this flavor
-            menu.clear() // Clear any items that might have been added by a superclass
-            return false // Return false to indicate no menu should be displayed
+            //menu.clear() // Clear any items that might have been added by a superclass
+            return true // Return false to indicate no menu should be displayed
         } else {
             // Existing menu inflation logic for other flavors
             menuInflater.inflate(R.menu.menu_main, menu) // Reuse existing menu or create a new one
@@ -332,20 +211,67 @@ class TransactionsInFBActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.menu_sms, R.id.menu_transaction -> {
-                // For simplicity, let's assume these take you to TransactionActivity
-                // which can then decide to load SMS or local transactions.
-                // Or, if you have a specific activity for SMS list, use that for menu_sms.
-                startActivity(Intent(this, TransactionActivity::class.java))
-                finish() // Optional: finish this activity
+            android.R.id.home -> {
+                onBackPressedDispatcher.onBackPressed() // Use this for proper back navigation
                 true
             }
-            R.id.menu_conversations -> {
-                startActivity(Intent(this, MainActivity::class.java))
-                finish() // Optional: finish this activity
+            R.id.action_add_dummy_fb -> {
+                //TODO add a menu user could use
+                // I am thinking could provide site names to display site specific transactions
+                /*if (USE_FIREBASE_DATA) {
+                    addDummyTransactionToFB()
+                } */
+                true
+            }
+            R.id.action_clear_all_fb -> {
+                if (USE_FIREBASE_DATA) {
+                    clearAllTransactionsFromFB()
+                } else {
+                    adapter.updateData(emptyList()) // Clear sample data
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun addDummyTransactionToFB() {
+        val key = database.push().key ?: return
+        val calendar = Calendar.getInstance() // For date consistency if needed
+        val sdf = SimpleDateFormat("dd MMM yy, hh:mm a", Locale.getDefault())
+        val dummyTransaction = TransactionInfo(
+            id = key,
+            name = "Dummy Transaction ${System.currentTimeMillis() % 100}",
+            amount = "₹${(100..1000).random()}.00",
+            transactionType = if (Math.random() < 0.5) "credit" else "debit",
+            date = System.currentTimeMillis(),
+            strDateInMessage = sdf.format(Date()), // Use current date for strDateInMessage
+            account = "FBTestACC",
+            transactionReference = "FBRef${(1000..9999).random()}",
+            upi = "dummy@fb",
+            accountBalance = "₹${(5000..10000).random()}.00",
+            raw = "This is a dummy transaction added via app for Firebase testing.",
+            isRawExpanded = false
+        )
+        database.child(key).setValue(dummyTransaction)
+            .addOnSuccessListener {
+                Log.d("TransactionsInFB", "Dummy transaction added to Firebase.")
+            }
+            .addOnFailureListener {
+                Log.e("TransactionsInFB", "Failed to add dummy transaction to Firebase.", it)
+            }
+    }
+
+
+    private fun clearAllTransactionsFromFB() {
+        database.removeValue()
+            .addOnSuccessListener {
+                Log.d("TransactionsInFB", "All transactions cleared from Firebase.")
+                transactionsList.clear() // Clear local list
+                adapter.updateData(transactionsList) // Update adapter with empty list
+            }
+            .addOnFailureListener {
+                Log.e("TransactionsInFB", "Failed to clear transactions from Firebase.", it)
+            }
     }
 }

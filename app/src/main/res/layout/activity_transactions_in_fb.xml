@@ -16,9 +16,27 @@
         app:title="Transactions from Firebase" />
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/transactionsRecyclerViewFB"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:listitem="@layout/item_transaction_fb" />
+        android:id="@+id/recyclerViewTransactionsFb"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    tools:listitem="@layout/item_transaction_fb" />
+
+    <!-- THIS IS THE IMPORTANT PART -->
+    <TextView
+        android:id="@+id/tvNoTransactionsFb"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="No transactions found."
+        android:visibility="gone"
+        android:padding="16dp" />
+
+    <ProgressBar
+        android:id="@+id/progressBarFb"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
 
 </LinearLayout>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_add_dummy_fb"
+        android:title="Add Dummy Transaction"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_clear_all_fb"
+        android:title="Clear All Transactions"
+        app:showAsAction="never" />
+    <!-- Add any other menu items you need here -->
+</menu>

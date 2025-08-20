@@ -9,23 +9,38 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import org.fossify.messages.R
-import org.fossify.messages.ui.TransactionInfo // Ensure this is the correct TransactionInfo
+import org.fossify.messages.ui.TransactionInfo // Ensure this is the correct import
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-// import java.util.TimeZone // If your server timestamps are UTC and you want to display in local, consider this
 
-class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) : // Constructor param changed
-    RecyclerView.Adapter<TransactionsAdapterFB.TransactionFBViewHolder>() {
+// Sealed class for different item types in the RecyclerView
+sealed class AdapterItemFB {
+    data class TransactionItem(val transaction: TransactionInfo) : AdapterItemFB()
+    data class DateHeaderItem(val dateString: String) : AdapterItemFB()
+}
 
-    // Key change: 'var' and 'MutableList', initialized from constructor param
-    private var transactions: MutableList<TransactionInfo> = initialTransactions.toMutableList()
+class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
+    RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
+    private var displayItems: MutableList<AdapterItemFB> = mutableListOf()
+
+    companion object {
+        private const val TYPE_TRANSACTION = 0
+        private const val TYPE_DATE_HEADER = 1
+    }
+
+    init {
+        processAndUpdateData(initialTransactions)
+    }
+
+    // ViewHolder for Transaction Items
     class TransactionFBViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val descriptionOrNameTextView: TextView = itemView.findViewById(R.id.transaction_fb_description_or_name)
         val amountTextView: TextView = itemView.findViewById(R.id.transaction_fb_amount)
         val dateTextView: TextView = itemView.findViewById(R.id.transaction_fb_date)
-        val typeLabelTextView: TextView = itemView.findViewById(R.id.transaction_fb_type_label) // New
+        val typeLabelTextView: TextView = itemView.findViewById(R.id.transaction_fb_type_label)
         val accountDetailsTextView: TextView = itemView.findViewById(R.id.transaction_fb_account_details)
         val referenceDetailsTextView: TextView = itemView.findViewById(R.id.transaction_fb_reference_details)
         val upiDetailsTextView: TextView = itemView.findViewById(R.id.transaction_fb_upi_details)
@@ -33,114 +48,160 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) : // Con
         val rawDataTextView: TextView = itemView.findViewById(R.id.transaction_fb_raw_data)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransactionFBViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_transaction_fb, parent, false)
-        return TransactionFBViewHolder(view)
+    // ViewHolder for Date Header Items
+    class DateHeaderViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val dateHeaderTextView: TextView = itemView.findViewById(R.id.date_header_text_fb)
     }
 
-    override fun onBindViewHolder(holder: TransactionFBViewHolder, position: Int) {
-        val transaction = transactions[position]
-        val context = holder.itemView.context
-
-        // Row 1: Name and Amount
-        var primaryIdentifier = transaction.name
-        if (primaryIdentifier.isNullOrEmpty()) {
-            holder.descriptionOrNameTextView.text = ""
-        } else {
-            holder.descriptionOrNameTextView.text = primaryIdentifier
+    override fun getItemViewType(position: Int): Int {
+        return when (displayItems[position]) {
+            is AdapterItemFB.TransactionItem -> TYPE_TRANSACTION
+            is AdapterItemFB.DateHeaderItem -> TYPE_DATE_HEADER
         }
-        holder.amountTextView.text = transaction.amount
-
-        // Row 2: Date (Left)
-        val displayDate = if (!transaction.strDateInMessage.isNullOrEmpty()) {
-            transaction.strDateInMessage
-        } else if (transaction.date != null) {
-            SimpleDateFormat("dd MMM yy, hh:mm a", Locale.getDefault()).format(Date(transaction.date!!))
-        } else {
-            "No Date"
-        }
-        holder.dateTextView.text = displayDate
-        holder.dateTextView.setTypeface(null, Typeface.NORMAL)
-
-        // Row 2: Type Label (Right)
-        val typeText = when (transaction.transactionType.lowercase(Locale.getDefault())) {
-            "credit" -> "CREDIT"
-            "debit" -> "DEBIT"
-            else -> transaction.transactionType.uppercase(Locale.getDefault()) // Fallback for other types or hide
-        }
-        if (typeText.isNotEmpty() && (typeText == "CREDIT" || typeText == "DEBIT")) {
-            holder.typeLabelTextView.text = typeText
-            holder.typeLabelTextView.visibility = View.VISIBLE
-            // Text color for credit/debit can be set here if needed, e.g.
-            // if (typeText == "CREDIT") {
-            // holder.typeLabelTextView.setTextColor(ContextCompat.getColor(context, R.color.your_credit_text_color))
-            // } else {
-            // holder.typeLabelTextView.setTextColor(ContextCompat.getColor(context, R.color.your_debit_text_color))
-            // }
-        } else {
-            holder.typeLabelTextView.visibility = View.GONE // Hide if not credit/debit or empty
-        }
-        // Boldness is handled by XML, but can be overridden:
-        // holder.typeLabelTextView.setTypeface(null, Typeface.BOLD) // If XML didn't set it
-
-        // Account Details
-        if (!transaction.account.isNullOrEmpty()) {
-            holder.accountDetailsTextView.text = "Account: ${transaction.account}"
-            holder.accountDetailsTextView.visibility = View.VISIBLE
-        } else {
-            holder.accountDetailsTextView.visibility = View.GONE
-        }
-
-        // Reference Details
-        if (!transaction.transactionReference.isNullOrEmpty()) {
-            holder.referenceDetailsTextView.text = "Ref: ${transaction.transactionReference}"
-            holder.referenceDetailsTextView.visibility = View.VISIBLE
-        } else {
-            holder.referenceDetailsTextView.visibility = View.GONE
-        }
-
-        // UPI Details
-        if (!transaction.upi.isNullOrEmpty()) {
-            holder.upiDetailsTextView.text = "UPI: ${transaction.upi}"
-            holder.upiDetailsTextView.visibility = View.VISIBLE
-        } else {
-            holder.upiDetailsTextView.visibility = View.GONE
-        }
-
-        // Balance Details
-        if (!transaction.accountBalance.isNullOrEmpty()) {
-            holder.balanceDetailsTextView.text = "Balance: ${transaction.accountBalance}"
-            holder.balanceDetailsTextView.visibility = View.VISIBLE
-        } else {
-            holder.balanceDetailsTextView.visibility = View.GONE
-        }
-
-        // Background color
-        val backgroundColor = when (transaction.transactionType.lowercase(Locale.getDefault())) {
-            "credit" -> ContextCompat.getColor(context, R.color.transaction_credit_background)
-            "debit" -> ContextCompat.getColor(context, R.color.transaction_debit_background)
-            else -> ContextCompat.getColor(context, R.color.default_transaction_background)
-        }
-        if (holder.itemView is CardView) {
-            (holder.itemView as CardView).setCardBackgroundColor(backgroundColor)
-        }
-
-        // Raw data display logic
-        holder.rawDataTextView.text = transaction.raw
-        holder.itemView.setOnClickListener {
-            transaction.isRawExpanded = !transaction.isRawExpanded
-            holder.rawDataTextView.visibility = if (transaction.isRawExpanded) View.VISIBLE else View.GONE
-        }
-        holder.rawDataTextView.visibility = if (transaction.isRawExpanded) View.VISIBLE else View.GONE
     }
 
-    override fun getItemCount() = transactions.size
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            TYPE_TRANSACTION -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_transaction_fb, parent, false)
+                TransactionFBViewHolder(view)
+            }
+            TYPE_DATE_HEADER -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_date_header_fb, parent, false)
+                DateHeaderViewHolder(view)
+            }
+            else -> throw IllegalArgumentException("Invalid view type: $viewType")
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val currentItem = displayItems[position]) {
+            is AdapterItemFB.TransactionItem -> {
+                val transactionHolder = holder as TransactionFBViewHolder
+                val transaction = currentItem.transaction
+                val context = transactionHolder.itemView.context
+
+                var primaryIdentifier = transaction.name
+                if (primaryIdentifier.isNullOrEmpty()) {
+                    transactionHolder.descriptionOrNameTextView.text = ""
+                } else {
+                    transactionHolder.descriptionOrNameTextView.text = primaryIdentifier
+                }
+                transactionHolder.amountTextView.text = transaction.amount
+
+                val displayDateText = if (!transaction.strDateInMessage.isNullOrEmpty()) {
+                    transaction.strDateInMessage
+                } else if (transaction.date != null) {
+                    SimpleDateFormat("dd MMM yy, hh:mm a", Locale.getDefault()).format(Date(transaction.date!!))
+                } else {
+                    "No Date"
+                }
+                transactionHolder.dateTextView.text = displayDateText
+                transactionHolder.dateTextView.setTypeface(null, Typeface.NORMAL)
+
+                val typeText = when (transaction.transactionType.lowercase(Locale.getDefault())) {
+                    "credit" -> "CREDIT"
+                    "debit" -> "DEBIT"
+                    else -> transaction.transactionType.uppercase(Locale.getDefault())
+                }
+                if (typeText.isNotEmpty() && (typeText == "CREDIT" || typeText == "DEBIT")) {
+                    transactionHolder.typeLabelTextView.text = typeText
+                    transactionHolder.typeLabelTextView.visibility = View.VISIBLE
+                } else {
+                    transactionHolder.typeLabelTextView.visibility = View.GONE
+                }
+
+                if (!transaction.account.isNullOrEmpty()) {
+                    transactionHolder.accountDetailsTextView.text = "Account: ${transaction.account}"
+                    transactionHolder.accountDetailsTextView.visibility = View.VISIBLE
+                } else {
+                    transactionHolder.accountDetailsTextView.visibility = View.GONE
+                }
+
+                if (!transaction.transactionReference.isNullOrEmpty()) {
+                    transactionHolder.referenceDetailsTextView.text = "Ref: ${transaction.transactionReference}"
+                    transactionHolder.referenceDetailsTextView.visibility = View.VISIBLE
+                } else {
+                    transactionHolder.referenceDetailsTextView.visibility = View.GONE
+                }
+
+                if (!transaction.upi.isNullOrEmpty()) {
+                    transactionHolder.upiDetailsTextView.text = "UPI: ${transaction.upi}"
+                    transactionHolder.upiDetailsTextView.visibility = View.VISIBLE
+                } else {
+                    transactionHolder.upiDetailsTextView.visibility = View.GONE
+                }
+
+                if (!transaction.accountBalance.isNullOrEmpty()) {
+                    transactionHolder.balanceDetailsTextView.text = "Balance: ${transaction.accountBalance}"
+                    transactionHolder.balanceDetailsTextView.visibility = View.VISIBLE
+                } else {
+                    transactionHolder.balanceDetailsTextView.visibility = View.GONE
+                }
+
+                val backgroundColor = when (transaction.transactionType.lowercase(Locale.getDefault())) {
+                    "credit" -> ContextCompat.getColor(context, R.color.transaction_credit_background)
+                    "debit" -> ContextCompat.getColor(context, R.color.transaction_debit_background)
+                    else -> ContextCompat.getColor(context, R.color.default_transaction_background)
+                }
+                if (transactionHolder.itemView is CardView) {
+                    (transactionHolder.itemView as CardView).setCardBackgroundColor(backgroundColor)
+                }
+
+                transactionHolder.rawDataTextView.text = transaction.raw
+                transactionHolder.itemView.setOnClickListener {
+                    transaction.isRawExpanded = !transaction.isRawExpanded
+                    transactionHolder.rawDataTextView.visibility = if (transaction.isRawExpanded) View.VISIBLE else View.GONE
+                }
+                transactionHolder.rawDataTextView.visibility = if (transaction.isRawExpanded) View.VISIBLE else View.GONE
+            }
+            is AdapterItemFB.DateHeaderItem -> {
+                val dateHeaderHolder = holder as DateHeaderViewHolder
+                dateHeaderHolder.dateHeaderTextView.text = currentItem.dateString
+            }
+        }
+    }
+
+    override fun getItemCount() = displayItems.size
+
+    private fun getHeaderDateFormatter(): SimpleDateFormat {
+        return SimpleDateFormat("EEEE, dd MMM yyyy", Locale.getDefault())
+    }
+
+    private fun processAndUpdateData(newTransactions: List<TransactionInfo>) {
+        val newDisplayItems = mutableListOf<AdapterItemFB>()
+        if (newTransactions.isEmpty()) {
+            displayItems.clear()
+            notifyDataSetChanged()
+            return
+        }
+
+        val sortedTransactions = newTransactions.sortedByDescending { it.date ?: 0L }
+
+        var lastHeaderDate: String? = null
+        val calendar = Calendar.getInstance()
+        val headerFormatter = getHeaderDateFormatter()
+
+        for (transaction in sortedTransactions) {
+            val transactionDateMillis = transaction.date ?: continue 
+            calendar.timeInMillis = transactionDateMillis
+            val currentDateHeader = headerFormatter.format(calendar.time)
+
+            if (currentDateHeader != lastHeaderDate) {
+                newDisplayItems.add(AdapterItemFB.DateHeaderItem(currentDateHeader))
+                lastHeaderDate = currentDateHeader
+            }
+            newDisplayItems.add(AdapterItemFB.TransactionItem(transaction))
+        }
+
+        displayItems.clear()
+        displayItems.addAll(newDisplayItems)
+        notifyDataSetChanged()
+    }
 
     fun updateData(newTransactions: List<TransactionInfo>) {
-        this.transactions.clear() // This will now work
-        this.transactions.addAll(newTransactions) // This will also work
-        this.transactions.sortByDescending { it.date ?: 0L } // Sort by date, newest first
-        notifyDataSetChanged()
+        processAndUpdateData(newTransactions)
     }
 }
