@@ -47,7 +47,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
         setupRecyclerView()
 
         if (USE_FIREBASE_DATA) {
-            database = FirebaseDatabase.getInstance().getReference("transactions")
+            database = FirebaseDatabase.getInstance().getReference("J5/sms_by_date")
             loadTransactionsFromFB()
             setupTodayTransactionsListener()
         } else {
@@ -125,21 +125,121 @@ class TransactionsInFBActivity : AppCompatActivity() {
         return sampleList
     }
 
+    val timestampFormatter = SimpleDateFormat("dd-MMM-yy HH:mm:ss", Locale.getDefault())
+    // Formatter for trying to parse 'dd-MMM-yy'
+    private val shortDateFormat = SimpleDateFormat("dd-MMM-yy", Locale.getDefault())
+    private fun parseTransactionNode(transactionNode: DataSnapshot): TransactionInfo? {
+
+        val id = transactionNode.key ?: return null // If key is null, we can't form a valid TransactionInfo
+
+        val name = transactionNode.child("name").getValue(String::class.java) ?: "Unknown Name"
+        val amount = transactionNode.child("amount").getValue(String::class.java) ?: "₹0.00"
+        val transactionType = transactionNode.child("transactionType").getValue(String::class.java) ?: "unknown"
+        val raw = transactionNode.child("raw").getValue(String::class.java) ?: ""
+        var account = transactionNode.child("account").getValue(String::class.java)
+        var transactionReference = transactionNode.child("transactionReference").getValue(String::class.java)
+        val upi = transactionNode.child("upi").getValue(String::class.java)
+        val accountBalance = transactionNode.child("accountBalance").getValue(String::class.java)
+        val isRawExpanded = transactionNode.child("isRawExpanded").getValue(Boolean::class.java) ?: false
+
+        // --- Logic for date and strDateInMessage ---
+        var finalStrDateInMessage = ""
+        var finalTimestamp = 0L
+
+        // 1. Check for "strDateInMessage" field first
+        val strDateFromNode = transactionNode.child("strDateInMessage").getValue(String::class.java)
+        if (strDateFromNode != null && strDateFromNode.isNotBlank()) {
+            finalStrDateInMessage = strDateFromNode
+            // Attempt to parse this string date to get a timestamp for the 'date' field
+            // This part is tricky as strDateFromNode could be in various formats.
+            // For simplicity, let's assume if strDateInMessage exists, it's the display date.
+            // You might need more robust parsing if you need to derive a timestamp from it.
+            // For now, if strDateInMessage is present, we might not have a reliable separate timestamp
+            // unless 'date' field also exists.
+        }
+
+        // 2. Check for "date" field (could be Long timestamp or String date)
+        val dateValue = transactionNode.child("date").value // Get value without specific type first
+        if (dateValue != null) {
+            when (dateValue) {
+                is Long -> { // It's a timestamp
+                    finalTimestamp = dateValue
+                    if (finalStrDateInMessage.isBlank()) { // Only format if strDateInMessage wasn't already set
+                        finalStrDateInMessage = timestampFormatter.format(Date(finalTimestamp))
+                    }
+                }
+                is String -> { // It's a date string
+                    // Try to parse it as 'dd-MMM-yy'
+                    try {
+                        val parsedDate = shortDateFormat.parse(dateValue)
+                        if (parsedDate != null) {
+                            finalTimestamp = parsedDate.time
+                            if (finalStrDateInMessage.isBlank()) {
+                                // If it's just 'dd-MMM-yy', format it for consistency or keep as is?
+                                // For now, let's reformat with a default time part if only date was found.
+                                finalStrDateInMessage = timestampFormatter.format(parsedDate)
+                            }
+                        } else {
+                            // Could not parse the string date, keep it as is if strDateInMessage is still blank
+                            if (finalStrDateInMessage.isBlank()) {
+                                finalStrDateInMessage = dateValue
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w("ParseTransaction", "Could not parse date string: $dateValue", e)
+                        if (finalStrDateInMessage.isBlank()) {
+                            finalStrDateInMessage = dateValue // Use raw string if parsing fails
+                        }
+                    }
+                }
+                else -> {
+                    Log.w("ParseTransaction", "Unknown type for 'date' field: ${dateValue::class.java.simpleName}")
+                }
+            }
+        }
+
+        // If after all checks, finalTimestamp is still 0L and strDateInMessage is blank,
+        // you might want a more robust default or logging.
+        if (finalTimestamp == 0L && finalStrDateInMessage.isBlank()) {
+            finalStrDateInMessage = "Date N/A" // Default if no date info found
+            // finalTimestamp remains 0L or you could set it to System.currentTimeMillis() or null if date is nullable Long?
+        }
+
+        account = account ?: "Unknown Acc"
+        transactionReference = transactionReference ?: "Unknown Ref"
+
+        return TransactionInfo(
+            id = id,
+            name = name,
+            amount = amount,
+            date = finalTimestamp, // This is our primary timestamp
+            transactionType = transactionType,
+            raw = raw,
+            strDateInMessage = finalStrDateInMessage, // This is the string representation
+            account = account,
+            transactionReference = transactionReference,
+            upi = upi,
+            accountBalance = accountBalance,
+            isRawExpanded = isRawExpanded
+        )
+    }
 
     private fun loadTransactionsFromFB() {
         binding.progressBarFb.visibility = View.VISIBLE
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 transactionsList.clear()
-                for (transactionSnapshot in snapshot.children) {
-                    val transaction = transactionSnapshot.getValue(TransactionInfo::class.java)
-                    transaction?.let {
-                        if (it.id == null || it.id!!.isEmpty()) {
-                            it.id = transactionSnapshot.key
+                // Iterate through each date group (e.g., "20-Aug-2025")
+                for (dateGroupSnapshot in snapshot.children) {
+                    // Now, iterate through the actual transaction nodes within this date group
+                    for (transactionNode in dateGroupSnapshot.children) {
+                        val transaction = parseTransactionNode(transactionNode) // Your existing parsing function
+                        transaction?.let {
+                            transactionsList.add(it)
                         }
-                        transactionsList.add(it)
                     }
                 }
+
                 // Assuming adapter.updateData handles sorting and any header generation
                 adapter.updateData(transactionsList)
                 binding.progressBarFb.visibility = View.GONE
