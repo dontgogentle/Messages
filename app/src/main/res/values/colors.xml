@@ -16,4 +16,20 @@
     <!-- References for auto theme switching -->
     <color name="date_header_text_color">@color/date_header_text_color_light</color>
     <color name="date_header_background">@color/date_header_background_light</color>
+
+    <!-- Added Material Design Grey Colors -->
+    <color name="md_grey_50">#FAFAFA</color>
+    <color name="md_grey_300">#E0E0E0</color> <!-- Also adding 300 as it was in a theme version -->
+    <color name="md_grey_400">#BDBDBD</color> <!-- Also adding 400 as it was in a theme version -->
+    <color name="md_grey_700">#616161</color> <!-- Also adding 700 as it was in a theme version -->
+    <color name="md_grey_900">#212121</color>
+    <color name="md_white_1000">#FFFFFF</color>
+    <color name="md_blue_600">#1E88E5</color> <!-- Also adding blue 600 as it was in a theme version -->
+
+    <!-- Standard Theme Colors (if not already defined, good to have placeholders) -->
+    <color name="color_primary">#FF6200EE</color> <!-- Default Purple -->
+    <color name="color_primary_dark">#FF3700B3</color> <!-- Darker Purple -->
+    <color name="color_accent">#FF03DAC5</color>
+    <color name="default_transaction_background">#FFFFFF</color> <!-- Default Teal -->
+
 </resources>

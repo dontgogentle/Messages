@@ -1,10 +1,52 @@
 <resources>
 
-    <style name="AppTheme" parent="AppTheme.Base" />
+    <!-- Assuming AppTheme.Base is defined if you use it, or remove its usage if not.
+         For now, providing a basic one if it was missing. -->
+    <style name="AppTheme.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Base theme items if this is used as an indirection -->
+    </style>
 
     <style name="roundedImageView" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">@dimen/normal_margin</item>
     </style>
-    <!-- The Theme.App.FbOnly style that was here is now removed -->
+
+    <!-- Your Main AppTheme - WITHOUT toolbarTheme and AppTheme.Toolbar -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Common -->
+        <item name="colorPrimary">@color/color_primary</item>
+        <item name="colorPrimaryDark">@color/color_primary_dark</item>
+        <item name="colorAccent">@color/color_accent</item>
+        <item name="appBackgroundColor">@color/md_grey_50</item>
+        <item name="appSecondaryBackgroundColor">@color/md_white_1000</item>
+        <item name="appTextColor">@color/md_grey_900</item>
+        <item name="appSecondaryTextColor">@color/md_grey_700</item>
+        <item name="appTextLinkColor">@color/md_blue_600</item>
+        <item name="appDividerColor">@color/md_grey_300</item>
+        <item name="appStatusBarColor">?colorPrimaryDark</item>
+        <item name="appNavigationBarColor">?colorPrimaryDark</item>
+        <item name="appIconColor">@color/md_grey_700</item>
+        <item name="appHandleColor">@color/md_grey_400</item>
+        <item name="appRippleColor">@color/md_grey_300</item>
+        <item name="appDialogButtonColor">?colorAccent</item>
+
+        <!-- Specific -->
+        <item name="android:windowBackground">?appBackgroundColor</item>
+        <item name="android:textColorPrimary">?appTextColor</item>
+        <item name="android:textColorSecondary">?appSecondaryTextColor</item>
+        <item name="android:statusBarColor">?appStatusBarColor</item>
+        <item name="android:navigationBarColor">?appNavigationBarColor</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="alertDialogTheme">@style/AlertDialogTheme</item>
+        <item name="android:listChoiceIndicatorMultiple">@drawable/abc_btn_check_material</item>
+        <item name="android:listChoiceIndicatorSingle">@drawable/abc_btn_radio_material</item>
+    </style>
+
+    <!-- AlertDialog Theme (ensure it's defined) -->
+    <style name="AlertDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <!-- Add customizations for AlertDialog if any, e.g.: -->
+        <!-- <item name="colorPrimary">@color/color_primary</item> -->
+        <!-- <item name="colorAccent">@color/color_accent</item> -->
+    </style>
+
 </resources>

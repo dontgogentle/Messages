@@ -58,6 +58,10 @@
     <string name="mark_as_unread">Mark as Unread</string>
     <string name="me">Me</string>
     <string name="enable_custom_notifications">Enable custom notifications</string>
+
+    <string name="channel_name">Transactions</string>
+    <string name="channel_description">Notifications for new transactions</string>
+
     <!-- Archive -->
     <string name="unarchive">Unarchive</string>
     <string name="empty_archive">Delete all archived conversations</string>

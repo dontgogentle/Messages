@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="appBackgroundColor" format="color|reference" />
+    <attr name="appSecondaryBackgroundColor" format="color|reference" />
+    <attr name="appTextColor" format="color|reference" />
+    <attr name="appSecondaryTextColor" format="color|reference" />
+    <attr name="appTextLinkColor" format="color|reference" />
+    <attr name="appDividerColor" format="color|reference" />
+    <attr name="appStatusBarColor" format="color|reference" />
+    <attr name="appNavigationBarColor" format="color|reference" />
+    <attr name="appIconColor" format="color|reference" />
+    <attr name="appHandleColor" format="color|reference" />
+    <attr name="appRippleColor" format="color|reference" />
+    <attr name="appDialogButtonColor" format="color|reference" />
+</resources>

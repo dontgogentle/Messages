@@ -1,6 +1,7 @@
 package org.fossify.messages.ui
 
 import android.graphics.Color
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import org.fossify.messages.R
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class TransactionAdapter(private var transactions: MutableList<TransactionInfo>) :
@@ -46,23 +48,34 @@ class TransactionAdapter(private var transactions: MutableList<TransactionInfo>)
         val transactionInfo = transactions[position]
         val context = holder.itemView.context
 
-        // Date Header Logic
+
         val showDateHeader = if (position == 0) {
             true // Always show header for the first item
         } else {
-            try {
-                val currentDate = dateFormat.parse(transactionInfo.date)
-                val prevDate = dateFormat.parse(transactions[position - 1].date)
-                currentDate != prevDate
-            } catch (e: Exception) {
-                // Fallback if date parsing fails, compare raw strings
-                transactionInfo.date != transactions[position - 1].date
+            val currentTransactionStringDate = transactionInfo.strDateInMessage
+            val prevTransactionStringDate = transactions[position - 1].strDateInMessage
+
+            if (currentTransactionStringDate != null && prevTransactionStringDate != null) {
+                try {
+                    val currentDateParsed = dateFormat.parse(currentTransactionStringDate) // Use String date
+                    val prevDateParsed = dateFormat.parse(prevTransactionStringDate)     // Use String date
+                    currentDateParsed != prevDateParsed
+                } catch (e: Exception) {
+                    // Fallback to raw string comparison if parsing fails for valid strings
+                    currentTransactionStringDate != prevTransactionStringDate
+                }
+            } else {
+                // If either string date is null, or both are, compare them directly.
+                // This means if one is null and the other isn't, they are different (show header).
+                // If both are null, they are effectively the same for grouping (don't show header).
+                currentTransactionStringDate != prevTransactionStringDate
             }
         }
 
         if (showDateHeader) {
             holder.dateSectionHeader.visibility = View.VISIBLE
-            holder.dateSectionHeader.text = transactionInfo.date // Or a more formatted version
+            // Display the strDateInMessage in the header
+            holder.dateSectionHeader.text = transactionInfo.strDateInMessage ?: "Unknown Date"
         } else {
             holder.dateSectionHeader.visibility = View.GONE
         }
@@ -84,7 +97,7 @@ class TransactionAdapter(private var transactions: MutableList<TransactionInfo>)
         
         holder.transactionType.text = transactionInfo.transactionType
         holder.amount.text = "Rs. ${transactionInfo.amount}"
-        holder.date.text = transactionInfo.date // Date on the card itself
+        holder.date.text = transactionInfo.strDateInMessage // Date on the card itself
 
         fun setupField(textView: TextView, label: String, value: String?) {
             if (!value.isNullOrEmpty()) {
@@ -122,14 +135,15 @@ class TransactionAdapter(private var transactions: MutableList<TransactionInfo>)
 
     fun updateData(newTransactions: List<TransactionInfo>) {
         transactions.clear()
-        // Sort by date - descending for newest first overall, then headers will naturally group
-        // It's crucial that dates like "12-Aug-25" can be parsed and compared correctly.
-        val sortedTransactions = newTransactions.sortedWith(compareByDescending {
-            try {
-                dateFormat.parse(it.date)
-            } catch (e: Exception) {
-                null // Handle parsing error, maybe log or treat as oldest
-            }
+        val sortedTransactions = newTransactions.sortedWith(compareByDescending { transaction ->
+            transaction.strDateInMessage?.let { dateStr -> // Use strDateInMessage
+                try {
+                    dateFormat.parse(dateStr)
+                } catch (e: Exception) {
+                    Log.w("TransactionAdapter", "Failed to parse date string for sorting: $dateStr", e)
+                    null // Treat as oldest if parsing fails
+                }
+            } ?: Date(0) // Treat null strDateInMessage as oldest (or Date(Long.MIN_VALUE))
         })
         transactions.addAll(sortedTransactions)
         notifyDataSetChanged()

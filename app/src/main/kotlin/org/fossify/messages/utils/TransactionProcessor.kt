@@ -2,319 +2,138 @@ package org.fossify.messages.utils
 
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import org.fossify.messages.ui.TransactionInfo
-import java.math.BigInteger
+import java.util.UUID
 import java.security.MessageDigest
 
 object TransactionProcessor {
 
-    private const val TAG = "TransactionProcessor"
+    private val regexes = listOf(
+        // Regex 1: Credit by transfer with account balance (Coop)
+        // Acc XXXXXX is Credited by Rs.XXXXX on dd-MMM-yy from XXXXXX. Avl Bal Rs.XXXXX.XX
+        Regex("""Acc\s+(\S+)\s+is\s+Credited\s+by\s+Rs\.([\d,]+\.?\d*)\s+on\s+(\d{2}-[A-Za-z]{3}-\d{2})\s+from\s+(\S+)\.\s+Avl\s+Bal\s+Rs\.([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE),
+        // Regex 2: Debit by transfer with account balance (Coop)
+        // Acc XXXXXX is Debited by Rs.XXXXX on dd-MMM-yy to XXXXXX. Avl Bal Rs.XXXXX.XX
+        Regex("""Acc\s+(\S+)\s+is\s+Debited\s+by\s+Rs\.([\d,]+\.?\d*)\s+on\s+(\d{2}-[A-Za-z]{3}-\d{2})\s+to\s+(\S+)\.\s+Avl\s+Bal\s+Rs\.([\d,]+\.?\d*)""", RegexOption.IGNORE_CASE),
+        // Regex 3: Credit UPI (HDFC)
+        // Rs XXXX credited to A/c XXXXXX by UPI Ref No XXXXXXXXXXXX (UPI ID: XXXXX@okhdfcbank) Name: XXXX on Date dd-MMM-yy. Linked to A/c No XXXXXX
+        Regex("""Rs\s+([\d,]+\.?\d*)\s+credited\s+to\s+A/c\s+\S+\s+by\s+UPI\s+Ref\s+No\s+(\S+)\s+\(UPI\s+ID:\s+(\S+)\)\s+Name:\s+(.+?)\s+on\s+Date\s+(\d{2}-[A-Za-z]{3}-\d{2})\.\s*Linked\s+to\s+A/c\s+No\s+(\S+)""", RegexOption.IGNORE_CASE),
+        // Regex 4: Debit UPI (HDFC)
+        // Rs XXXX debited from A/c XXXXXX to XXXXX (UPI Ref No XXXXXXXXXXXX). on Date dd-MMM-yy. Linked to A/c No XXXXXX
+        Regex("""Rs\s+([\d,]+\.?\d*)\s+debited\s+from\s+A/c\s+\S+\s+to\s+(.+?)\s+\(UPI\s+Ref\s+No\s+(\S+)\)\s*on\s+Date\s+(\d{2}-[A-Za-z]{3}-\d{2})\.\s*Linked\s+to\s+A/c\s+No\s+(\S+)""", RegexOption.IGNORE_CASE)
+    )
 
-    fun cleanAmount(amountStr: String): String {
-        return amountStr.replace(Regex("Rs\\.?\\s*|,"), "").replace(Regex("\\.00$"), "").trim()
+    private fun cleanAmount(amount: String): String {
+        return amount.replace(",", "")
     }
-
-    private fun generateDeterministicId(rawMessage: String): String {
-        val md = MessageDigest.getInstance("SHA-256")
-        val hashBytes = md.digest(rawMessage.toByteArray(Charsets.UTF_8))
-        return BigInteger(1, hashBytes).toString(16).padStart(64, '0')
-    }
-
+    
     fun parseMessage(body: String): TransactionInfo? {
-        val parseTag = "$TAG-Parse"
-
-        val regex1 = Regex("""^ICICI Bank Account\s+(\w+)\s+credited:Rs\.\s*([\d,]+\.?\d{0,2})\s+on\s+(\d{2}-\w{3}-\d{2})\.\s*Info\s*([^.]+?)\.?\s*Available Balance is Rs\.\s*([\d,]+\.?\d{0,2})""", RegexOption.IGNORE_CASE)
-        regex1.find(body)?.let {
-            Log.d(parseTag, "Matched Regex 1")
-            return TransactionInfo(
-                account = it.groupValues[1],
-                transactionType = "CREDIT",
-                amount = cleanAmount(it.groupValues[2]),
-                date = it.groupValues[3],
-                transactionReference = (it.groupValues[4].trim()).let { ref -> if (ref.endsWith("-")) ref.dropLast(1) else ref },
-                accountBalance = cleanAmount(it.groupValues[5]),
-                raw = body
-            )
+        for (regex in regexes) {
+            val matchResult = regex.find(body)
+            if (matchResult != null) {
+                val it = matchResult
+                return when (regex) {
+                    regexes[0] -> TransactionInfo( // Regex 1 (Coop Credit)
+                        account = it.groupValues[1],
+                        transactionType = "CREDIT",
+                        amount = cleanAmount(it.groupValues[2]),
+                        strDateInMessage = it.groupValues[3], 
+                        date = null,                         
+                        transactionReference = (it.groupValues[4].trim()).let { ref -> if (ref.endsWith("-")) ref.dropLast(1) else ref },
+                        accountBalance = cleanAmount(it.groupValues[5]),
+                        raw = body
+                    )
+                    regexes[1] -> TransactionInfo( // Regex 2 (Coop Debit)
+                        account = it.groupValues[1],
+                        transactionType = "DEBIT",
+                        amount = cleanAmount(it.groupValues[2]),
+                        strDateInMessage = it.groupValues[3], 
+                        date = null,                         
+                        transactionReference = (it.groupValues[4].trim()).let { ref -> if (ref.endsWith("-")) ref.dropLast(1) else ref },
+                        accountBalance = cleanAmount(it.groupValues[5]),
+                        raw = body
+                    )
+                    regexes[2] -> TransactionInfo( // Regex 3 (HDFC Credit UPI)
+                        transactionType = "CREDIT",
+                        amount = cleanAmount(it.groupValues[1]),
+                        transactionReference = it.groupValues[2].trim(),
+                        upi = it.groupValues[3].trim(), 
+                        name = it.groupValues[4].trim(),
+                        receivedFrom = it.groupValues[4].trim(),
+                        strDateInMessage = it.groupValues[5], 
+                        date = null,
+                        account = it.groupValues[6], 
+                        raw = body
+                    )
+                    regexes[3] -> TransactionInfo( // Regex 4 (HDFC Debit UPI)
+                        transactionType = "DEBIT",
+                        amount = cleanAmount(it.groupValues[1]), 
+                        name = it.groupValues[2].trim(), 
+                        transferredTo = it.groupValues[2].trim(),
+                        transactionReference = it.groupValues[3].trim(),
+                        strDateInMessage = it.groupValues[4], 
+                        date = null,
+                        account = it.groupValues[5], 
+                        raw = body
+                    )
+                    else -> null 
+                }
+            }
         }
-
-        val regex2 = Regex("""^Dear Customer, Acct\s+(\w+)\s+is credited with Rs\s*([\d,]+\.?\d{0,2})\s+on\s+(\d{2}-\w{3}-\d{2})\s+from\s+(.+?)\.\s*UPI:(\S+)""", RegexOption.IGNORE_CASE)
-        regex2.find(body)?.let {
-            Log.d(parseTag, "Matched Regex 2")
-            val upiRef = it.groupValues[5].split('-').first()
-            val receivedFromName = it.groupValues[4].trim()
-            return TransactionInfo(
-                account = it.groupValues[1],
-                transactionType = "CREDIT",
-                amount = cleanAmount(it.groupValues[2]),
-                date = it.groupValues[3],
-                transactionReference = "UPI:$upiRef",
-                upi = upiRef,
-                receivedFrom = receivedFromName,
-                name = receivedFromName,
-                raw = body
-            )
-        }
-
-        val regex3 = Regex("""^ICICI Bank Acct\s+(\w+)\s+debited for Rs\s*([\d,]+\.?\d{0,2})\s+on\s+(\d{2}-\w{3}-\d{2});\s*(.+?)\s+credited\.\s*UPI:(\S+)""", RegexOption.IGNORE_CASE)
-        regex3.find(body)?.let {
-            Log.d(parseTag, "Matched Regex 3")
-            val upiRef = it.groupValues[5].split('-').first()
-            val transferredToName = it.groupValues[4].trim()
-            return TransactionInfo(
-                account = it.groupValues[1],
-                transactionType = "DEBIT",
-                amount = cleanAmount(it.groupValues[2]),
-                date = it.groupValues[3],
-                transactionReference = "UPI:$upiRef",
-                upi = upiRef,
-                transferredTo = transferredToName,
-                name = transferredToName,
-                raw = body
-            )
-        }
-
-        val regex4 = Regex("""Acct\s+(\w+)\s+is credited with Rs\.?\s*([\d,]+\.?\d{0,2})\s+on\s+(\d{2}-\w{3}-\d{2})\s+from\s+(.+?)\s+UPI:(\S+)""", RegexOption.IGNORE_CASE)
-        regex4.find(body)?.let {
-            Log.d(parseTag, "Matched Regex 4 (general credit with UPI)")
-            val upiRef = it.groupValues[5].split('-').first()
-            val receivedFromName = it.groupValues[4].trim()
-            return TransactionInfo(
-                account = it.groupValues[1],
-                transactionType = "CREDIT",
-                amount = cleanAmount(it.groupValues[2]),
-                date = it.groupValues[3],
-                transactionReference = "UPI:$upiRef",
-                upi = upiRef,
-                name = receivedFromName,
-                receivedFrom = receivedFromName,
-                raw = body
-            )
-        }
-
-        Log.d(parseTag, "No regex matched for body: $body")
         return null
     }
 
-    fun pushToFirebase(allPotentialTransactions: List<TransactionInfo>) {
-        val syncTag = "$TAG-SyncLogic"
-        if (allPotentialTransactions.isEmpty()) {
-            Log.d(syncTag, "No transactions to process.")
-            return
-        }
-
-        val transactionsBySite = allPotentialTransactions.groupBy { getSiteForAccount(it.account) }
-
-        for ((site, siteTransactions) in transactionsBySite) {
-            if (site == "UNKNOWN") {
-                Log.w(syncTag, "Skipping ${siteTransactions.size} transactions for UNKNOWN site.")
-                continue
-            }
-            Log.d(syncTag, "Processing site: $site")
-            if (siteTransactions.isEmpty()) {
-                Log.d(syncTag, "No transactions for site $site after filtering.")
-                continue
-            }
-            val transactionsByDate = siteTransactions.groupBy { it.date }
-            val sortedDates = transactionsByDate.keys.sortedDescending()
-
-            processDatesSequentiallyForSite(site, sortedDates, 0, transactionsByDate)
-        }
+    private fun generateDeterministicId(rawMessage: String): String {
+        val bytes = rawMessage.toByteArray(Charsets.UTF_8)
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
-    private fun processDatesSequentiallyForSite(
-        site: String,
-        dates: List<String>,
-        currentIndex: Int,
-        transactionsByDate: Map<String, List<TransactionInfo>> // Contains transactions only for the current 'site'
-    ) {
-        val siteDateTag = "$TAG-SiteDateProc"
-        if (currentIndex >= dates.size) {
-            Log.d(siteDateTag, "Site $site: Finished processing all dates or processing stopped earlier.")
-            return
+    fun pushToFirebase(transactions: List<TransactionInfo>, site: String = "J5") {
+        Log.d("TransactionProcessor", "Batch pushToFirebase called with ${transactions.size} transactions for site $site.")
+        transactions.forEach { transactionInfoToPush ->
+            pushSingleTransactionNoCheck(transactionInfoToPush, site)
         }
 
-        val dateStr = dates[currentIndex]
-        val deviceMessagesForDateAndSite = transactionsByDate[dateStr] ?: run {
-            Log.w(siteDateTag, "Site $site, Date $dateStr: No device messages found in map (should not happen if keys are correct). Skipping to next date.")
-            processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
-            return
-        }
-
-        // This check might be redundant if the above `run` block handles missing keys,
-        // but good for safety if a key exists with an empty list.
-        if (deviceMessagesForDateAndSite.isEmpty()) {
-            Log.d(siteDateTag, "Site $site, Date $dateStr: Device messages list is empty. Skipping to next date.")
-            processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
-            return
-        }
-
-        val firebasePathForDate = "$site/sms_by_date/$dateStr"
-        val dateMessagesRef = FirebaseDatabase.getInstance().getReference(firebasePathForDate)
-
-        Log.d(siteDateTag, "Site $site, Date: $dateStr. Querying Firebase count. Device messages for this date & site: ${deviceMessagesForDateAndSite.size}")
-
-
-//        for (transactionToPush in deviceMessagesForDateAndSite) {
-//            pushSingleTransactionInternal(transactionToPush, site)
-//        }
-
-        dateMessagesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val firebaseMessageCount = snapshot.childrenCount.toInt()
-                Log.d(siteDateTag, "Site $site, Date: $dateStr. Firebase count: $firebaseMessageCount. Device messages: ${deviceMessagesForDateAndSite.size}")
-
-                if (firebaseMessageCount < deviceMessagesForDateAndSite.size) {
-                    Log.d(siteDateTag, "Site $site, Date: $dateStr. Firebase has fewer messages (${firebaseMessageCount}) than device (${deviceMessagesForDateAndSite.size}). Pushing all ${deviceMessagesForDateAndSite.size} device messages for this date & site.")
-                    for (transactionToPush in deviceMessagesForDateAndSite) {
-                        pushSingleTransactionInternal(null,transactionToPush, site)
-                    }
-                    // After attempting to push for this date, continue to the previous day for this site
-                    Log.d(siteDateTag, "Site $site, Date: $dateStr. Finished pushing. Proceeding to next older date.")
-                    processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
-                } else {
-                    Log.d(siteDateTag, "Site $site, Date: $dateStr. Firebase count ($firebaseMessageCount) is >= device count (${deviceMessagesForDateAndSite.size}). STOPPING further processing for this site.")
-                    // Stop condition met for this site.
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(siteDateTag, "Site $site, Date: $dateStr. Firebase read for count CANCELLED. Error: ${error.message}. Continuing to next older date for this site as a precaution.", error.toException())
-                processDatesSequentiallyForSite(site, dates, currentIndex + 1, transactionsByDate)
-            }
-        })
     }
 
-        public fun pushSingleTransactionNoCheck(context: Context, transactionInfoToPush: TransactionInfo, site: String) {
-            val pushSingleTag = "$TAG-PushSingle"
-            val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
+    public fun pushSingleTransactionNoCheck(transactionInfoToPushOriginal: TransactionInfo, site: String) {
+        val transactionInfoToPush = transactionInfoToPushOriginal.copy()
+        val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
 
-            Log.d(pushSingleTag, "Attempting to push. Site: $site, Account: ${transactionInfoToPush.account}, Date: ${transactionInfoToPush.date}, Raw Preview: ${transactionInfoToPush.raw.take(50)}..., Deterministic ID: $deterministicId")
+        transactionInfoToPush.id = deterministicId
+        transactionInfoToPush.date = System.currentTimeMillis() // Added for Step 3
 
-            val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
-            Log.d(pushSingleTag, "Firebase Path for this transaction: $firebasePath")
-//            Toast.makeText(context, "Firebase Path: $firebasePath", Toast.LENGTH_SHORT).show()
+        val dateForPath = transactionInfoToPush.strDateInMessage ?: "unknown-date" // Uses strDateInMessage
+        val databaseReference = FirebaseDatabase.getInstance().getReference("$site/sms_by_date/$dateForPath/$deterministicId")
 
-            val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
-
-            Log.d(pushSingleTag, "Just Pushing Transaction DOES NOT EXIST. Pushing to Firebase. Path: $firebasePath for ID: $deterministicId.")
-            databaseReference.setValue(transactionInfoToPush)
-                .addOnSuccessListener {
-                    Log.d(pushSingleTag, "Firebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath")
-//                                Toast.makeText(context, "Firebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    {
-                        Log.e(pushSingleTag, "Firebase push FAILED for ID: $deterministicId. Path: $firebasePath", e)
-//                                    Toast.makeText(context, "Firebase push FAILED for ID: $deterministicId. Path: $firebasePath", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            Log.d(pushSingleTag, "Listener attached for existence check for ID: $deterministicId. Path: $firebasePath.")
-        }
-
-        public fun pushSingleTransactionInternal(context: Context?, transactionInfoToPush: TransactionInfo, site: String) {
-            val pushSingleTag = "$TAG-PushSingle"
-            val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
-
-            Log.d(pushSingleTag, "Attempting to push. Site: $site, Account: ${transactionInfoToPush.account}, Date: ${transactionInfoToPush.date}, Raw Preview: ${transactionInfoToPush.raw.take(50)}..., Deterministic ID: $deterministicId")
-
-            val firebasePath = "$site/sms_by_date/${transactionInfoToPush.date}/$deterministicId"
-            Log.d(pushSingleTag, "Firebase Path for this transaction: $firebasePath")
-            if (context != null) Toast.makeText(context, "Firebase Path: $firebasePath", Toast.LENGTH_SHORT).show()
-
-            val databaseReference = FirebaseDatabase.getInstance().getReference(firebasePath)
-
-            databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        Log.d(pushSingleTag, "Transaction ALREADY EXISTS in Firebase. Path: $firebasePath. Skipping push for ID: $deterministicId.")
-                    } else  {
-                        Log.d(pushSingleTag, "Just Pushing Transaction DOES NOT EXIST. Pushing to Firebase. Path: $firebasePath for ID: $deterministicId.")
-                        databaseReference.setValue(transactionInfoToPush)
-                            .addOnSuccessListener {
-                                Log.d(pushSingleTag, "Firebase push SUCCESSFUL for ID: $deterministicId. Path: $firebasePath")
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e(pushSingleTag, "Firebase push FAILED for ID: $deterministicId. Path: $firebasePath", e)
-                            }
-                         }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e(pushSingleTag, "Firebase read CANCELLED for ID: $deterministicId (while checking existence). Path: $firebasePath. Error: ${error.message}", error.toException())
-                }
-            })
-            Log.d(pushSingleTag, "Listener attached for existence check for ID: $deterministicId. Path: $firebasePath.")
-        }
-
-
-    fun pushToFirebase7(info: TransactionInfo) {
-        val pushTag = "$TAG-Push"
-        Log.d(pushTag, "--- IKKKSTARTING pushToFirebase (setValue TEST) ---")
-        Log.d(pushTag, "TransactionInfo RAW: ${info.raw.take(50)}...")
-
-        val testRef = FirebaseDatabase.getInstance().getReference("testSetValueNode") // New simple path for writing
-        val dataToSet = mapOf(
-            "message" to "Hello from setValue test!",
-            "timestamp" to System.currentTimeMillis(),
-            "rawPreview" to info.raw.take(20)
-        )
-
-        Log.d(pushTag, "Attempting setValue on 'testSetValueNode' with data: $dataToSet")
-
-        testRef.setValue(dataToSet)
+        databaseReference.setValue(transactionInfoToPush)
             .addOnSuccessListener {
-                Log.d(pushTag, "!!!!!!!! setValue TEST: onSuccessListener CALLED !!!!!!!!")
-                Log.d(pushTag, "Successfully wrote data to 'testSetValueNode'")
+                // Log.d("TransactionProcessor", "Transaction successfully written to Firebase with ID: $deterministicId at $site/sms_by_date/$dateForPath")
             }
             .addOnFailureListener { e ->
-                Log.e(pushTag, "!!!!!!!! setValue TEST: onFailureListener CALLED !!!!!!!!")
-                Log.e(pushTag, "Failed to write data to 'testSetValueNode'", e)
+                Log.e("TransactionProcessor", "Failed to write transaction to Firebase ID: $deterministicId. Error: ${e.message}", e)
             }
-
-        Log.d(pushTag, "--- FINISHED pushToFirebase (setValue TEST) - setValue call made ---")
-
-        // ... (previous addListenerForSingleValueEvent test and original logic are commented out) ...
     }
 
-    fun pushToFirebase2(info: TransactionInfo) {
-        val pushTag = "$TAG-Push"
-        Log.d(pushTag, "--- STARTING pushToFirebase (MINIMAL TEST) ---")
-        Log.d(pushTag, "TransactionInfo RAW: ${info.raw.take(50)}...")
+    private fun pushSingleTransactionInternal(context: Context?, transactionInfoToPushOriginal: TransactionInfo) {
+        val transactionInfoToPush = transactionInfoToPushOriginal.copy()
+        val site = "J5" 
 
-        // Ensure MessagesApplication.kt is using the IP your React Native app uses (100.120.198.49)
-        val testRef = FirebaseDatabase.getInstance().getReference("testNode") // Simplest possible path
+        val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
+        transactionInfoToPush.id = deterministicId
+        transactionInfoToPush.date = System.currentTimeMillis() // Added for Step 3
 
-        Log.d(pushTag, "Attempting addListenerForSingleValueEvent on 'testNode'")
+        val dateForPath = transactionInfoToPush.strDateInMessage ?: "unknown-date"
+        val databaseReference = FirebaseDatabase.getInstance().getReference("$site/sms_by_date/$dateForPath/$deterministicId")
 
-        testRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                Log.d(pushTag, "!!!!!!!! MINIMAL TEST: onDataChange CALLED !!!!!!!!")
-                Log.d(pushTag, "TestNode Snapshot exists: ${snapshot.exists()}")
-                if (snapshot.exists()) {
-                    Log.d(pushTag, "TestNode Data: ${snapshot.value}")
-                }
+        databaseReference.setValue(transactionInfoToPush)
+            .addOnSuccessListener {
+                // Success
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(pushTag, "!!!!!!!! MINIMAL TEST: onCancelled CALLED !!!!!!!!")
-                Log.e(pushTag, "Error: ${error.message}", error.toException())
-                Log.e(pushTag, "Error Code: ${error.code}, Details: ${error.details}")
+            .addOnFailureListener {
+                // Failure
             }
-        })
-
-        Log.d(pushTag, "--- FINISHED pushToFirebase (MINIMAL TEST) - Listener call made ---")
-    }
-
-    fun getSiteForAccount(account: String): String {
-        return when (account.lowercase().replace("xx","")) {
-            "665" -> "J5"
-            else -> "UNKNOWN"
-        }
     }
 }
-

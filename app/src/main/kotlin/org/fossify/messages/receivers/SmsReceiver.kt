@@ -127,7 +127,7 @@ class SmsReceiver : BroadcastReceiver() {
 //                        Toast.makeText(context, "Message processed, sent to firebase", Toast.LENGTH_SHORT).show()
 //                        TransactionProcessor.pushSingleTransactionInternal(context,parsed, "J5")
                         Log.d("SmsReceiver", "Message processed, sent to firebase")
-                        TransactionProcessor.pushSingleTransactionNoCheck(context,parsed, "J5")
+                        TransactionProcessor.pushSingleTransactionNoCheck(parsed, "J5")
                     }
                 }
             }

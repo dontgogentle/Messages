@@ -28,10 +28,12 @@ import org.fossify.messages.utils.TransactionProcessor // Import TransactionProc
 
 @Parcelize
 data class TransactionInfo(
+    var id: String? = null,
+    var strDateInMessage: String? = "", // For "dd-MMM-yy" string from SMS, was 'date'
+    var date: Long? = null,             // For epoch timestamp
     val account: String = "",
     val transactionType: String = "", // "CREDIT" or "DEBIT"
     val amount: String = "",
-    val date: String = "",
     val transactionReference: String = "",
     val raw: String = "",
     val upi: String? = null, // Not all transactions have UPI
@@ -49,24 +51,20 @@ class TransactionActivity : AppCompatActivity() {
     private val transactions = mutableListOf<TransactionInfo>()
 
     companion object {
-        const val NEW_TRANSACTION_ACTION = "org.fossify.messages.NEW_TRANSACTION" // Corrected constant name
-        const val TRANSACTION_DATA_KEY = "org.fossify.messages.TRANSACTION_DATA"   // Key for passing data
+        const val NEW_TRANSACTION_ACTION = "org.fossify.messages.NEW_TRANSACTION"
+        const val TRANSACTION_DATA_KEY = "org.fossify.messages.TRANSACTION_DATA"
         private const val SMS_PERMISSION_REQUEST_CODE = 101
     }
 
     private val newTransactionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == NEW_TRANSACTION_ACTION) {
-                val newTransaction = intent.getParcelableExtra<TransactionInfo>(TRANSACTION_DATA_KEY) // Expecting Parcelable
+                val newTransaction = intent.getParcelableExtra<TransactionInfo>(TRANSACTION_DATA_KEY)
                 if (newTransaction != null) {
                     Log.d("TransactionActivity", "Received new transaction via broadcast: $newTransaction")
-                    // Check for duplicates before adding to avoid issues if receiver and loadTransactions overlap
-                    if (transactions.none { existing -> existing.raw == newTransaction.raw && existing.date == newTransaction.date }) {
-                        transactions.add(0, newTransaction) // Add to the top
-                        adapter.updateData(transactions.distinctBy { t -> t.raw + t.date })
-                        // Consider if newly received broadcast messages should also trigger a batch push or be handled by the next full loadTransactions
-                        // For now, let's assume they'll be covered by the next manual refresh or app launch.
-                        // If immediate push is desired for broadcast items, TransactionProcessor.pushToFirebase(listOf(newTransaction)) could be called here.
+                    if (transactions.none { existing -> existing.raw == newTransaction.raw && existing.strDateInMessage == newTransaction.strDateInMessage }) {
+                        transactions.add(0, newTransaction)
+                        adapter.updateData(transactions.distinctBy { t -> t.raw + t.strDateInMessage })
                     }
                 } else {
                     Log.w("TransactionActivity", "Received null transaction from broadcast or wrong data type.")
@@ -91,7 +89,7 @@ class TransactionActivity : AppCompatActivity() {
 
         LocalBroadcastManager.getInstance(this).registerReceiver(
             newTransactionReceiver,
-            IntentFilter(NEW_TRANSACTION_ACTION) // Use corrected constant name
+            IntentFilter(NEW_TRANSACTION_ACTION)
         )
     }
 
@@ -124,7 +122,6 @@ class TransactionActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.menu_sms, R.id.menu_transaction -> {
-                // Already in TransactionActivity, refresh by re-requesting permissions (which loads if granted)
                 checkAndRequestSmsPermissions()
                 true
             }
@@ -161,17 +158,17 @@ class TransactionActivity : AppCompatActivity() {
     private fun loadTransactions() {
         val tag = "TransactionActivityLoad"
         Log.d(tag, "Not Starting to load SMS transactions...")
-        if (true) return
+        if (true) return // This line seems to intentionally block loading, keeping it as is.
 
         Log.d(tag, "Starting to load SMS transactions...")
         transactions.clear()
 
         val cursor = contentResolver.query(
             Uri.parse("content://sms/inbox"),
-            null, // projection
-            null, // selection
-            null, // selectionArgs
-            "date DESC" // sortOrder
+            null, 
+            null, 
+            null, 
+            "date DESC"
         )
 
         if (cursor == null) {
@@ -182,7 +179,7 @@ class TransactionActivity : AppCompatActivity() {
 
         var totalMessages = 0
         var parsedCount = 0
-        val localTransactionsBatch = mutableListOf<TransactionInfo>() // Collect here before adding to main list
+        val localTransactionsBatch = mutableListOf<TransactionInfo>()
 
         cursor.use {
             while (it.moveToNext()) {
@@ -193,8 +190,7 @@ class TransactionActivity : AppCompatActivity() {
                     val parsed = TransactionProcessor.parseMessage(body)
                     if (parsed != null) {
                         parsedCount++
-                        localTransactionsBatch.add(parsed) // Add to a temporary batch
-                        // TransactionProcessor.pushToFirebase(parsed) // Removed individual push
+                        localTransactionsBatch.add(parsed)
                     } else {
                         // Log.d(tag, "Skipped SMS: No match for body: ${body.take(50)}...")
                     }
@@ -203,18 +199,18 @@ class TransactionActivity : AppCompatActivity() {
                 }
             }
         }
-        // cursor.close() is handled by cursor.use
-
+        
         Log.i(tag, "Finished loading SMS from device. Total: $totalMessages, Parsed: $parsedCount")
         
         // Update the main list and adapter
-        transactions.addAll(localTransactionsBatch.distinctBy { it.raw + it.date }) // Add all new, distinct messages
-        adapter.updateData(transactions.distinctBy { it.raw + it.date }.sortedByDescending { it.date }) // Ensure sorted by date for UI
+        // Ensure to use strDateInMessage for distinctness if that was the old logic
+        transactions.addAll(localTransactionsBatch.distinctBy { it.raw + it.strDateInMessage }) 
+        // Sort by the new 'date' (timestamp) field for UI consistency
+        adapter.updateData(transactions.distinctBy { it.raw + it.strDateInMessage }.sortedByDescending { it.date }) 
 
-        // Now, push the collected transactions to Firebase using the batch method
         if (localTransactionsBatch.isNotEmpty()) {
             Log.d(tag, "Calling batch pushToFirebase with ${localTransactionsBatch.size} transactions.")
-            TransactionProcessor.pushToFirebase(localTransactionsBatch.toList()) // Use toList() for an immutable copy
+            TransactionProcessor.pushToFirebase(localTransactionsBatch.toList())
         } else {
             Log.d(tag, "No new transactions parsed from SMS to push to Firebase.")
         }
