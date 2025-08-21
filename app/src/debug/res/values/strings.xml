@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_launcher_name">Messages_debug</string>
+    <string name="channel_name_transactions">New Transactions</string>
+    <string name="channel_description_transactions">Notifications for new transactions received
+    </string>
 </resources>

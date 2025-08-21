@@ -1,13 +1,23 @@
 package org.fossify.messages.ui
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import android.content.SharedPreferences
 import com.google.firebase.database.*
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ActivityTransactionsInFbBinding
@@ -63,6 +73,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
                 transactionsRecyclerView.visibility = View.VISIBLE
             }
         }
+        createNotificationChannel()
     }
 
     private fun setupRecyclerView() {
@@ -263,22 +274,87 @@ class TransactionsInFBActivity : AppCompatActivity() {
     }
 
     private fun setupTodayTransactionsListener() {
-        val todayStartTimestamp = getStartOfDay(System.currentTimeMillis())
-        val query = database.orderByChild("date").startAt(todayStartTimestamp.toDouble())
+        val todayFormatted: String = SimpleDateFormat("dd-MMM-yy", Locale.ENGLISH).format(Date())
+        println(todayFormatted)
 
-        query.addValueEventListener(object : ValueEventListener {
+        database.child(todayFormatted).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 Log.d("TransactionsInFB", "Today's transactions updated: ${snapshot.childrenCount} items")
-                // Here, you might want to specifically update the adapter with today's transactions
-                // or merge them intelligently into the existing list if the main listener
-                // isn't catching these updates efficiently for some reason.
-                // For now, this just logs. The main listener should ideally handle all updates.
+
+                for (transactionNode in snapshot.children) {
+                    val transaction = parseTransactionNode(transactionNode)
+                    transaction?.let { newTxn ->
+                        // Check if this transaction already exists in the list
+                        val alreadyExists = transactionsList.any { existingTxn ->
+                            existingTxn.id == newTxn.id // Replace 'id' with your unique key field
+                        }
+
+                        if (!alreadyExists) {
+                            transactionsList.add(newTxn)
+                            Log.d("TransactionsInFB", "Added new transaction: ${newTxn.id}")
+                            showNewTransactionNotification(newTxn)
+                        }
+                    }
+                }
+                adapter.updateData(transactionsList)
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("TransactionsInFB", "Failed to listen for today's transactions", error.toException())
             }
         })
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = getString(R.string.channel_name_transactions) // Make sure R.string.channel_name_transactions is defined
+            val descriptionText = getString(R.string.channel_description_transactions) // Make sure R.string.channel_description_transactions is defined
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(TRANSACTION_CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showNewTransactionNotification(transaction: TransactionInfo) {
+        val intent = Intent(this, TransactionsInFBActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, pendingIntentFlags)
+        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        val builder = NotificationCompat.Builder(this, TRANSACTION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_message) // USER NEEDS TO REPLACE THIS with a valid drawable
+            .setContentTitle("From: ${transaction.name}")
+            .setContentText("Amount: ${transaction.amount}, Type: ${transaction.transactionType}, Date: ${transaction.strDateInMessage}")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setSound(defaultSoundUri)
+            .setAutoCancel(true)
+
+        try {
+            with(NotificationManagerCompat.from(this)) {
+                notify(getNextNotificationId(), builder.build())
+            }
+        } catch (e: SecurityException) {
+            Log.e("TransactionsInFB", "Failed to show notification. Ensure POST_NOTIFICATIONS permission.", e)
+            // Consider Toast.makeText(this, "Notification permission needed.", Toast.LENGTH_LONG).show()
+        }
+    }
+    private fun getNextNotificationId(): Int {
+        val prefs = getSharedPreferences(NOTIFICATION_ID_PREFS, Context.MODE_PRIVATE)
+        val lastId = prefs.getInt(LAST_NOTIFICATION_ID_KEY, 0)
+        val nextId = lastId + 1
+        prefs.edit().putInt(LAST_NOTIFICATION_ID_KEY, nextId).apply()
+        return nextId
     }
 
     private fun getStartOfDay(timestamp: Long): Long {
@@ -373,5 +449,11 @@ class TransactionsInFBActivity : AppCompatActivity() {
             .addOnFailureListener {
                 Log.e("TransactionsInFB", "Failed to clear transactions from Firebase.", it)
             }
+    }
+
+    companion object {
+        private const val TRANSACTION_CHANNEL_ID = "new_transaction_channel"
+        private const val NOTIFICATION_ID_PREFS = "NotificationPrefs"
+        private const val LAST_NOTIFICATION_ID_KEY = "lastNotificationId"
     }
 }
