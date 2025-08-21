@@ -30,6 +30,7 @@
     <color name="color_primary">#FF6200EE</color> <!-- Default Purple -->
     <color name="color_primary_dark">#FF3700B3</color> <!-- Darker Purple -->
     <color name="color_accent">#FF03DAC5</color>
-    <color name="default_transaction_background">#FFFFFF</color> <!-- Default Teal -->
+    <color name="default_transaction_background">#FFFFFF</color>
+    <color name="bright_header_border_color">#FF00FF</color> <!-- Default Teal -->
 
 </resources>

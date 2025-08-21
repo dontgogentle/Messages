@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="fb_only_toolbar_background">#00BCD4</color> <!-- Light Gray -->
+    <color name="bright_orange_border">#FFA500</color>
+    <color name="dark_purple_text">#800080</color>
 </resources>
