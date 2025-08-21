@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale // Added for SimpleDateFormat Locale
 import org.fossify.messages.BuildConfig // Replace org.fossify.messages with your actual applicationId
+import org.fossify.messages.activities.MainActivity
 
 class TransactionsInFBActivity : AppCompatActivity() {
 
@@ -136,9 +137,9 @@ class TransactionsInFBActivity : AppCompatActivity() {
         return sampleList
     }
 
-    val timestampFormatter = SimpleDateFormat("dd-MMM-yy HH:mm:ss", Locale.getDefault())
+    private val timestampFormatter = SimpleDateFormat("dd-MMM-yy hh:mm:ss a", Locale.ENGLISH)
+    private val shortDateFormat = SimpleDateFormat("dd-MMM-yy", Locale.ENGLISH)
     // Formatter for trying to parse 'dd-MMM-yy'
-    private val shortDateFormat = SimpleDateFormat("dd-MMM-yy", Locale.getDefault())
     private fun parseTransactionNode(transactionNode: DataSnapshot): TransactionInfo? {
 
         val id = transactionNode.key ?: return null // If key is null, we can't form a valid TransactionInfo
@@ -251,6 +252,8 @@ class TransactionsInFBActivity : AppCompatActivity() {
                     }
                 }
 
+                transactionsList.sortByDescending { it.date }
+
                 // Assuming adapter.updateData handles sorting and any header generation
                 adapter.updateData(transactionsList)
                 binding.progressBarFb.visibility = View.GONE
@@ -296,6 +299,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
                         }
                     }
                 }
+                transactionsList.sortByDescending { it.date }
                 adapter.updateData(transactionsList)
             }
 
@@ -387,6 +391,19 @@ class TransactionsInFBActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.menu_sms, R.id.menu_transaction -> { // not applicable for fbOnly flavor
+                // For simplicity, let's assume these take you to TransactionActivity
+                // which can then decide to load SMS or local transactions.
+                // Or, if you have a specific activity for SMS list, use that for menu_sms.
+                startActivity(Intent(this, TransactionActivity::class.java))
+                finish() // Optional: finish this activity
+                true
+            }
+            R.id.menu_conversations -> { // not applicable for fbOnly flavor
+                startActivity(Intent(this, MainActivity::class.java))
+                finish() // Optional: finish this activity
+                true
+            }
             android.R.id.home -> {
                 onBackPressedDispatcher.onBackPressed() // Use this for proper back navigation
                 true

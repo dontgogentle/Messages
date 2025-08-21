@@ -32,5 +32,6 @@
     <color name="color_accent">#FF03DAC5</color>
     <color name="default_transaction_background">#FFFFFF</color>
     <color name="bright_header_border_color">#FF00FF</color> <!-- Default Teal -->
+    <color name="dark_purple_text">#800080</color>
 
 </resources>
