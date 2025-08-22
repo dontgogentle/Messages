@@ -38,7 +38,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
     // Removed: private lateinit var fab: FloatingActionButton
 
     // Flag to control whether to use Firebase or sample data
-    private val USE_FIREBASE_DATA = !BuildConfig.DEBUG
+    private val USE_FIREBASE_DATA = true //!BuildConfig.DEBUG
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

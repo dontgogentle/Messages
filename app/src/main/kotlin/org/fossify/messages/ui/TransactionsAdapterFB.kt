@@ -91,10 +91,10 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
                 }
                 transactionHolder.amountTextView.text = transaction.amount
 
-                val displayDateText = if (!transaction.strDateInMessage.isNullOrEmpty()) {
-                    transaction.strDateInMessage
-                } else if (transaction.date != null) {
+                val displayDateText = if (transaction.date != null) {
                     SimpleDateFormat("dd MMM yy, hh:mm a", Locale.getDefault()).format(Date(transaction.date!!))
+                } else if (!transaction.strDateInMessage.isNullOrEmpty()) {
+                    transaction.strDateInMessage
                 } else {
                     "No Date"
                 }
