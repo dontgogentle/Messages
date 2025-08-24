@@ -24,6 +24,7 @@ import android.text.format.DateUtils
 import android.text.format.DateUtils.FORMAT_NO_YEAR
 import android.text.format.DateUtils.FORMAT_SHOW_DATE
 import android.text.format.DateUtils.FORMAT_SHOW_TIME
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
@@ -60,6 +61,7 @@ import org.fossify.commons.extensions.beVisible
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.extensions.darkenColor
 import org.fossify.commons.extensions.formatDate
+import org.fossify.commons.extensions.formatDateOrTime
 import org.fossify.commons.extensions.getBottomNavigationBackgroundColor
 import org.fossify.commons.extensions.getContrastColor
 import org.fossify.commons.extensions.getFilenameFromUri
@@ -193,6 +195,7 @@ import org.joda.time.DateTime
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.sql.Date
 
 class ThreadActivity : SimpleActivity() {
     private val MIN_DATE_TIME_DIFF_SECS = 300
@@ -1297,9 +1300,12 @@ class ThreadActivity : SimpleActivity() {
             // or if the message is sent from a different SIM
             val isSentFromDifferentKnownSIM =
                 prevSIMId != -1 && message.subscriptionId != -1 && prevSIMId != message.subscriptionId
+            Log.d("ThreadActivity", "Before if Adding message date:"+message.date+", prevDateTime:"+prevDateTime)
+            Log.d("ThreadActivity", "Before if Adding date/time date time is:"+ Date(message.date.toLong()).toString())
             if (message.date - prevDateTime > MIN_DATE_TIME_DIFF_SECS || isSentFromDifferentKnownSIM) {
                 val simCardID = subscriptionIdToSimId[message.subscriptionId] ?: "?"
                 items.add(ThreadDateTime(message.date, simCardID))
+                Log.d("ThreadActivity", "******* Adding date/time date time is:"+ Date(message.date.toLong()).toString())
                 prevDateTime = message.date
             }
             items.add(message)

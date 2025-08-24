@@ -15,6 +15,7 @@ import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.models.PhoneNumber
 import org.fossify.commons.models.SimpleContact
 import org.fossify.messages.extensions.*
+import org.fossify.messages.helpers.FirebaseSyncState
 import org.fossify.messages.helpers.ReceiverUtils.isMessageFilteredOut
 import org.fossify.messages.helpers.refreshMessages
 import org.fossify.messages.models.Message

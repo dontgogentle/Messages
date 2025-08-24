@@ -7,6 +7,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.util.Log
 import android.util.Size
 import android.util.TypedValue
 import android.view.Menu
@@ -511,6 +512,7 @@ class ThreadAdapter(
                     hideTimeOnOtherDays = false,
                     showCurrentYear = false
                 )
+                Log.d("ThreadActivity", " formatted date is : $text and date is : ${dateTime.date}")
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
             }
             threadDateTime.setTextColor(textColor)

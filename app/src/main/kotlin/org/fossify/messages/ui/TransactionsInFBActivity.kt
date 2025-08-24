@@ -27,6 +27,9 @@ import java.util.Date
 import java.util.Locale // Added for SimpleDateFormat Locale
 import org.fossify.messages.BuildConfig // Replace org.fossify.messages with your actual applicationId
 import org.fossify.messages.activities.MainActivity
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 class TransactionsInFBActivity : AppCompatActivity() {
 
@@ -140,6 +143,16 @@ class TransactionsInFBActivity : AppCompatActivity() {
     private val timestampFormatter = SimpleDateFormat("dd-MMM-yy hh:mm:ss a", Locale.ENGLISH)
     private val shortDateFormat = SimpleDateFormat("dd-MMM-yy", Locale.ENGLISH)
     // Formatter for trying to parse 'dd-MMM-yy'
+
+    fun convertToTimestamp(dateStr: String?): Long {
+        val formatter = DateTimeFormatter.ofPattern("dd-MMM-yy")
+        val localDate = if (dateStr != null) {
+            LocalDate.parse(dateStr, formatter)
+        } else {
+            LocalDate.now()
+        }
+        return localDate.atStartOfDay(ZoneId.systemDefault()).toEpochSecond()
+    }
     private fun parseTransactionNode(transactionNode: DataSnapshot): TransactionInfo? {
 
         val id = transactionNode.key ?: return null // If key is null, we can't form a valid TransactionInfo
@@ -215,6 +228,13 @@ class TransactionsInFBActivity : AppCompatActivity() {
         if (finalTimestamp == 0L && finalStrDateInMessage.isBlank()) {
             finalStrDateInMessage = "Date N/A" // Default if no date info found
             // finalTimestamp remains 0L or you could set it to System.currentTimeMillis() or null if date is nullable Long?
+        }
+
+        finalStrDateInMessage = transactionNode.child("strDateInMessage").getValue(String::class.java) ?: "Date N/A"
+        finalTimestamp  = convertToTimestamp(finalStrDateInMessage)
+        val parsedDate = shortDateFormat.parse(finalStrDateInMessage)
+        if (parsedDate != null) {
+            finalTimestamp = parsedDate.time
         }
 
         account = account ?: "Unknown Acc"

@@ -1,6 +1,7 @@
 package org.fossify.messages.ui
 
 import android.graphics.Typeface
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,6 +15,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 // Sealed class for different item types in the RecyclerView
 sealed class AdapterItemFB {
@@ -171,34 +173,61 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
     }
 
     private fun processAndUpdateData(newTransactions: List<TransactionInfo>) {
+        val TAG = "processAndUpdateData"
+        Log.d(TAG, "processAndUpdateData called with ${newTransactions.size} new transactions.")
         val newDisplayItems = mutableListOf<AdapterItemFB>()
         if (newTransactions.isEmpty()) {
+            Log.d(TAG, "No new transactions, clearing display items.")
             displayItems.clear()
             notifyDataSetChanged()
             return
         }
 
         val sortedTransactions = newTransactions.sortedByDescending { it.date ?: 0L }
+        Log.d(TAG, "Transactions sorted. Total: ${sortedTransactions.size}")
 
-        var lastHeaderDate: String? = null
-        val calendar = Calendar.getInstance()
+        val calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
+
         val headerFormatter = getHeaderDateFormatter()
 
-        for (transaction in sortedTransactions) {
-            val transactionDateMillis = transaction.date ?: continue 
-            calendar.timeInMillis = transactionDateMillis
-            val currentDateHeader = headerFormatter.format(calendar.time)
+        var lastHeaderDay = -1
+        var lastHeaderMonth = -1
+        var lastHeaderYear = -1
+        Log.d(TAG, "Initial lastHeaderDate: Y=$lastHeaderYear, M=$lastHeaderMonth, D=$lastHeaderDay")
 
-            if (currentDateHeader != lastHeaderDate) {
-                newDisplayItems.add(AdapterItemFB.DateHeaderItem(currentDateHeader))
-                lastHeaderDate = currentDateHeader
+        for ((index, transaction) in sortedTransactions.withIndex()) {
+            val transactionDateMillis = transaction.date ?: continue // Skip if date is null
+            calendar.timeInMillis = transactionDateMillis
+
+            val currentTransactionDay = calendar.get(Calendar.DAY_OF_MONTH)
+            val currentTransactionMonth = calendar.get(Calendar.MONTH) // 0-indexed
+            val currentTransactionYear = calendar.get(Calendar.YEAR)
+
+            Log.d(TAG, "Loop $index: TxDateMillis=$transactionDateMillis -> Current Y=$currentTransactionYear, M=$currentTransactionMonth, D=$currentTransactionDay")
+            Log.d(TAG, "Comparing with LastHeader: Y=$lastHeaderYear, M=$lastHeaderMonth, D=$lastHeaderDay")
+
+            if (currentTransactionYear != lastHeaderYear ||
+                currentTransactionMonth != lastHeaderMonth ||
+                currentTransactionDay != lastHeaderDay
+            ) {
+                val currentDateHeaderString = headerFormatter.format(calendar.time)
+                Log.i(TAG, "Date change detected! Adding header: '$currentDateHeaderString'")
+                newDisplayItems.add(AdapterItemFB.DateHeaderItem(currentDateHeaderString))
+                lastHeaderYear = currentTransactionYear
+                lastHeaderMonth = currentTransactionMonth
+                lastHeaderDay = currentTransactionDay
+                Log.d(TAG, "Updated lastHeaderDate: Y=$lastHeaderYear, M=$lastHeaderMonth, D=$lastHeaderDay")
+            } else {
+                Log.d(TAG, "No date change for this transaction.")
             }
             newDisplayItems.add(AdapterItemFB.TransactionItem(transaction))
         }
 
+        Log.d(TAG, "Finished processing transactions. New display items count: ${newDisplayItems.size}")
         displayItems.clear()
         displayItems.addAll(newDisplayItems)
         notifyDataSetChanged()
+        Log.d(TAG, "Data set changed notified.")
     }
 
     fun updateData(newTransactions: List<TransactionInfo>) {

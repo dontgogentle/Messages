@@ -1,7 +1,11 @@
 package org.fossify.messages.activities
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.ZoneId
 import android.annotation.SuppressLint
 import android.app.role.RoleManager
+import android.content.Context // Added import
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
@@ -10,8 +14,14 @@ import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
+import android.util.Log // Added import
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.coordinatorlayout.widget.CoordinatorLayout
+import com.google.firebase.database.FirebaseDatabase // Added import (potential direct use)
+import kotlinx.coroutines.CoroutineScope // Added import
+import kotlinx.coroutines.Dispatchers // Added import
+import kotlinx.coroutines.launch // Added import
+import kotlinx.coroutines.withContext // Added import
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.extensions.adjustAlpha
 import org.fossify.commons.extensions.appLaunched
@@ -66,6 +76,7 @@ import org.fossify.messages.extensions.getConversations
 import org.fossify.messages.extensions.getMessages
 import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.messagesDB
+import org.fossify.messages.helpers.FirebaseSyncState // Added import
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
@@ -73,14 +84,19 @@ import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
 import org.fossify.messages.models.Message
 import org.fossify.messages.models.SearchResult
+import org.fossify.messages.ui.TransactionInfo
 import org.fossify.messages.ui.TransactionActivity
-import org.fossify.messages.ui.TransactionsInFBActivity // Added import
+import org.fossify.messages.ui.TransactionsInFBActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.text.SimpleDateFormat // Added import
+import java.util.Date // Added import
+import java.util.Locale // Added import
 
 import android.view.Menu
 import android.view.MenuItem
+import org.fossify.messages.utils.TransactionProcessor
 
 class MainActivity : SimpleActivity() {
     private val MAKE_DEFAULT_APP_REQUEST = 1
@@ -91,9 +107,11 @@ class MainActivity : SimpleActivity() {
     private var bus: EventBus? = null
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
+    private val mainActivityScope = CoroutineScope(Dispatchers.Main) // Scope for UI-related coroutines
 
     @SuppressLint("InlinedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
+
         isMaterialActivity = true
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
@@ -112,6 +130,19 @@ class MainActivity : SimpleActivity() {
         clearAllMessagesIfNeeded {
             loadMessages()
         }
+
+        Log.d("MessagesApplication", "Application onCreate: Initializing FirebaseSyncState.")
+
+        // FirebaseSyncState.initialize() is now called in MessagesApplication.kt
+        FirebaseSyncState.initialize(
+            { success, timestamp ->
+                if (success) {
+                    Log.i("MessagesApplication", "XXFirebaseSyncState initialized successfully from Application class, last synced timestamp: $timestamp")
+                } else {
+                    Log.e("MessagesApplication", "XXFirebaseSyncState failed to initialize from Application class.")
+                }
+            }
+        )
 
         if (checkAppSideloading()) {
             return
@@ -195,11 +226,11 @@ class MainActivity : SimpleActivity() {
                 R.id.show_archived -> launchArchivedConversations()
                 R.id.settings -> launchSettings()
                 R.id.about -> launchAbout()
-                R.id.menu_transaction -> { // This handles the programmatically added Transaction item
+                R.id.menu_transaction -> { 
                     val intent = Intent(this, TransactionActivity::class.java)
                     startActivity(intent)
                 }
-                R.id.action_show_fb_transactions -> { // Added this case for item from menu_main.xml
+                R.id.action_show_fb_transactions -> { 
                     val intent = Intent(this, TransactionsInFBActivity::class.java)
                     startActivity(intent)
                 }
@@ -262,8 +293,6 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-    // while SEND_SMS and READ_SMS permissions are mandatory, READ_CONTACTS is optional.
-    // If we don't have it, we just won't be able to show the contact name in some cases
     private fun askPermissions() {
         handlePermission(PERMISSION_READ_SMS) {
             if (it) {
@@ -308,6 +337,10 @@ class MainActivity : SimpleActivity() {
         binding.conversationsFab.setOnClickListener {
             launchNewConversation()
         }
+        // Call sync after messenger is initialized and conversations potentially loaded/updated
+        mainActivityScope.launch { // Launch on main scope, syncNewSmsToFirebase will switch to IO
+            syncNewSmsToFirebase(applicationContext)
+        }
     }
 
     private fun getCachedConversations() {
@@ -340,9 +373,9 @@ class MainActivity : SimpleActivity() {
         val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
         ensureBackgroundThread {
             val privateContacts = MyContactsContentProvider.getSimpleContacts(this, privateCursor)
-            val conversations = getConversations(privateContacts = privateContacts)
+            val allSystemConversations = getConversations(privateContacts = privateContacts) // Renamed for clarity
 
-            conversations.forEach { clonedConversation ->
+            allSystemConversations.forEach { clonedConversation ->
                 val threadIds = cachedConversations.map { it.threadId }
                 if (!threadIds.contains(clonedConversation.threadId)) {
                     conversationsDB.insertOrUpdate(clonedConversation)
@@ -354,16 +387,14 @@ class MainActivity : SimpleActivity() {
                 val threadId = cachedConversation.threadId
 
                 val isTemporaryThread = cachedConversation.isScheduled
-                val isConversationDeleted = !conversations.map { it.threadId }.contains(threadId)
+                val isConversationDeleted = !allSystemConversations.map { it.threadId }.contains(threadId)
                 if (isConversationDeleted && !isTemporaryThread) {
                     conversationsDB.deleteThreadId(threadId)
                 }
 
                 val newConversation =
-                    conversations.find { it.phoneNumber == cachedConversation.phoneNumber }
+                    allSystemConversations.find { it.phoneNumber == cachedConversation.phoneNumber }
                 if (isTemporaryThread && newConversation != null) {
-                    // delete the original temporary thread and move any scheduled messages
-                    // to the new thread
                     conversationsDB.deleteThreadId(threadId)
                     messagesDB.getScheduledThreadMessages(threadId)
                         .forEach { message ->
@@ -376,25 +407,23 @@ class MainActivity : SimpleActivity() {
             }
 
             cachedConversations.forEach { cachedConv ->
-                val conv = conversations.find {
+                val conv = allSystemConversations.find {
                     it.threadId == cachedConv.threadId && !Conversation.areContentsTheSame(
                         old = cachedConv, new = it
                     )
                 }
                 if (conv != null) {
-                    // FIXME: Scheduled message date is being reset here. Conversations with
-                    //  scheduled messages will have their original date.
                     insertOrUpdateConversation(conv)
                 }
             }
 
-            val allConversations = conversationsDB.getNonArchived() as ArrayList<Conversation>
+            val currentConversationsForUI = conversationsDB.getNonArchived() as ArrayList<Conversation> // Use fresh list from DB
             runOnUiThread {
-                setupConversations(allConversations)
+                setupConversations(currentConversationsForUI)
             }
 
             if (config.appRunCount == 1) {
-                conversations.map { it.threadId }.forEach { threadId ->
+                allSystemConversations.map { it.threadId }.forEach { threadId -> // Use allSystemConversations
                     val messages = getMessages(
                         threadId = threadId,
                         getImageResolutions = false,
@@ -407,6 +436,118 @@ class MainActivity : SimpleActivity() {
             }
         }
     }
+
+
+    fun convertToTimestamp(dateStr: String?): Long {
+        val formatter = DateTimeFormatter.ofPattern("dd-MMM-yy")
+        val localDate = if (dateStr != null) {
+            LocalDate.parse(dateStr, formatter)
+        } else {
+            LocalDate.now()
+        }
+        return localDate.atStartOfDay(ZoneId.systemDefault()).toEpochSecond()
+    }
+
+    // --- Start of Firebase SMS Sync Logic ---
+    private suspend fun syncNewSmsToFirebase(context: Context) {
+        withContext(Dispatchers.IO) { // Perform sync operations on a background thread
+            try {
+                FirebaseSyncState.awaitInitialization() // Ensure FirebaseSyncState is initialized
+                val lastSyncedTimestamp = FirebaseSyncState.getLastMsgTimestamp()
+                var newLatestTimestampToUpdate = lastSyncedTimestamp // In seconds
+                Log.d("MainActivity", "Starting SMS sync. Last synced timestamp: $lastSyncedTimestamp")
+
+                val allConversations = conversationsDB.getNonArchived()
+
+                for (conversation in allConversations) {
+//                    if (isIciciciSender(conversation.address)) {
+                    if (isIciciciSender(conversation.phoneNumber)) {
+                        // Fetch messages for this thread, from this sender, newer than lastSyncedTimestamp, ordered ASC by date
+                        // Placeholder for actual DAO call:
+                        // val messagesToProcess = messagesDB.getAscendingMessagesFromSenderInThreadNewerThan(
+                        // conversation.threadId, "%-ICICIT-%", lastSyncedTimestamp
+                        // )
+                        // For now, filtering in code (less efficient for very large datasets):
+//                        val messagesInThread = messagesDB.getMessagesFromThread(conversation.threadId, false)
+                        val messagesInThread = messagesDB.getThreadMessages(conversation.threadId)
+                        val messagesToProcess = messagesInThread
+                            .filter {
+                                // Check message specific sender if conversation.address is not granular enough
+                                (it.senderName?.contains("-ICICIT-", ignoreCase = true) == true || conversation.phoneNumber?.contains("-ICICIT-", ignoreCase = true) == true) &&
+//                                (it.address?.contains("-ICICIT-", ignoreCase = true) == true || conversation.address?.contains("-ICICIT-", ignoreCase = true) == true) &&
+                                it.date > lastSyncedTimestamp
+                            }
+                            .sortedBy { it.date } // Process oldest of the new messages first
+
+                        if (messagesToProcess.isNotEmpty()){
+                             Log.d("MainActivity", "Found ${messagesToProcess.size} messages to process for thread ${conversation.threadId}")
+                        }
+
+                        for (message in messagesToProcess) {
+                            Log.d("MainActivity", "Processing message ID ${message.id}, Date: ${message.date}")
+                            // Ensure message.address is not null for TransactionProcessor
+//                            val senderAddress = message.address ?: conversation.address ?: "UnknownSender"
+//                            val transactionInfo = TransactionProcessor.processTransactionSms(
+//                                context,
+//                                message.body,
+//                                senderAddress,
+//                                message.date * 1000L // Assuming processor expects milliseconds
+//                            )
+
+                            val transactionInfo = TransactionProcessor.parseMessage(message.body)
+//                            transactionInfo?.date = message.date.toLong()
+                            transactionInfo?.date = convertToTimestamp(transactionInfo.strDateInMessage) //TODO find out the right member to retrieve the date/timestamp from the message.
+                                 // TODO: it is after all available in the message conversation thread activity.
+
+                            if (transactionInfo != null) {
+                                TransactionProcessor.pushSingleTransactionNoCheck(transactionInfo, "J5");
+
+
+//                                val datePath = formatDateForFirebasePath(message.date * 1000L) // Expects milliseconds
+//                                val success = TransactionProcessor.addTransactionToFb(
+//                                    context,
+//                                    transactionInfo,
+//                                    datePath
+//                                )
+
+//                                if (success) {
+//                                    Log.i("MainActivity", "Successfully pushed message ID ${message.id} (key: ${transactionInfo.key}) to Firebase path: J5/sms_by_date/$datePath")
+                                    newLatestTimestampToUpdate = message.date.toLong() // Update with the timestamp (in seconds) of the successfully pushed message
+//                                } else {
+//                                    Log.e("MainActivity", "Failed to push message ID ${message.id} to Firebase.")
+//                                    // Optionally, break or implement retry logic
+//                                }
+                            } else {
+                                 Log.w("MainActivity", "Failed to parse message ID ${message.id} into TransactionInfo.")
+                            }
+                        }
+                    }
+                }
+
+                if (newLatestTimestampToUpdate > lastSyncedTimestamp) {
+                    Log.i("MainActivity", "Updating Firebase sms_last_msg_timstamp to: $newLatestTimestampToUpdate")
+                    FirebaseSyncState.updateLastMsgTimestampInFirebase(newLatestTimestampToUpdate)
+                } else {
+                    Log.d("MainActivity", "No new messages were synced. Timestamp remains $lastSyncedTimestamp")
+                }
+
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error during SMS sync to Firebase: ${e.message}", e)
+            }
+        }
+    }
+
+    private fun isIciciciSender(address: String?): Boolean {
+        Log.d("MainActivity", "Checking if address is Icicici: $address")
+        return address?.contains("-ICICIT-", ignoreCase = true) == true
+    }
+
+    private fun formatDateForFirebasePath(timestampMs: Long): String {
+        val sdf = SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH) // Using English for month consistency
+        return sdf.format(Date(timestampMs))
+    }
+    // --- End of Firebase SMS Sync Logic ---
+
 
     private fun getOrCreateConversationsAdapter(): ConversationsAdapter {
         var currAdapter = binding.conversationsList.adapter
@@ -439,8 +580,6 @@ class MainActivity : SimpleActivity() {
             ).toMutableList() as ArrayList<Conversation>
 
         if (cached && config.appRunCount == 1) {
-            // there are no cached conversations on the first run so we show the
-            // loading placeholder and progress until we are done loading from telephony
             showOrHideProgress(conversations.isEmpty())
         } else {
             showOrHideProgress(false)
@@ -698,7 +837,7 @@ class MainActivity : SimpleActivity() {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun refreshMessages(event: Events.RefreshMessages) {
-        initMessenger()
+        initMessenger() // This will also trigger the sync logic
     }
 
     private fun checkWhatsNewDialog() {
@@ -707,20 +846,20 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-override fun onCreateOptionsMenu(menu: Menu): Boolean {
-    menu.add(Menu.NONE, R.id.menu_transaction, Menu.NONE, "Transactions")
-        .setIcon(R.drawable.ic_transaction)
-        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-    return true
-}
-
-override fun onOptionsItemSelected(item: MenuItem): Boolean {
-    return when (item.itemId) {
-        R.id.menu_transaction -> {
-            startActivity(Intent(this, TransactionActivity::class.java))
-            true
-        }
-        else -> super.onOptionsItemSelected(item)
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(Menu.NONE, R.id.menu_transaction, Menu.NONE, "Transactions")
+            .setIcon(R.drawable.ic_transaction)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        return true
     }
-}
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.menu_transaction -> {
+                startActivity(Intent(this, TransactionActivity::class.java))
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
 }

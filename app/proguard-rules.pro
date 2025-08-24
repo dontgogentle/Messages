@@ -33,3 +33,19 @@
 -keep class org.fossify.commons.models.SimpleContact { *; }
 -keep class org.fossify.messages.models.Attachment { *; }
 -keep class org.fossify.messages.models.MessageAttachment { *; }
+
+    # Assuming your TransactionInfo class is at org.fossify.messages.models.TransactionInfo
+    -keep class org.fossify.messages.ui.TransactionInfo { *; }
+    -keepnames class org.fossify.messages.ui.TransactionInfo { *; }
+
+    # More specific: keep all fields in TransactionInfo
+    -keepclassmembers class org.fossify.messages.ui.TransactionInfo {
+        public <fields>;
+        # If you have methods that Firebase might call (like getters/setters if not a data class)
+        # public <methods>;
+    }
+
+    # If Firebase needs a no-argument constructor
+    -keepclassmembers class org.fossify.messages.ui.TransactionInfo {
+        public <init>();
+    }
