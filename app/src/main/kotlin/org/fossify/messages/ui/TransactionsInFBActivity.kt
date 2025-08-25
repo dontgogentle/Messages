@@ -187,7 +187,11 @@ class TransactionsInFBActivity : SimpleActivity() {
         }
 
         // 2. Check for "date" field (could be Long timestamp or String date)
-        val dateValue = (transactionNode.child("date").value ?: 0).toInt() // Get value without specific type first
+        val dateValStr = transactionNode.child("date").value.toString()
+        val dateValue = if (dateValStr.length == 13 && dateValStr.startsWith("1"))
+                              (dateValStr.toLong()/1000).toInt()
+                        else dateValStr.toInt()
+            //(transactionNode.child("date").value ?: 0).toInt() // Get value without specific type first
         /* if (dateValue != null) {
             when (dateValue) {
                 is Int -> { // It's a timestamp
