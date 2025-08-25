@@ -36,6 +36,17 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_open_gpay_transactions_fb"
+        android:title="@string/gpay_transactions_in_fb"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_upload_gpay_csv"
+        android:title="@string/upload_gpay_csv"
+        android:icon="@android:drawable/ic_menu_upload"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/settings"
         android:icon="@drawable/ic_settings_cog_vector"
         android:title="@string/settings"

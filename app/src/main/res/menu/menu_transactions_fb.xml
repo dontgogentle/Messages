@@ -1,15 +1,19 @@
-<?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_add_dummy_fb"
-        android:title="Add Dummy Transaction"
+        android:id="@+id/action_upload_gpay_csv"
+        android:title="@string/upload_gpay_csv"
+        android:icon="@android:drawable/ic_menu_upload"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_open_gpay_transactions_fb"
+        android:title="@string/gpay_transactions_in_fb"
         app:showAsAction="never" />
 
     <item
-        android:id="@+id/action_clear_all_fb"
-        android:title="Clear All Transactions"
+        android:id="@+id/action_clear_all_transactions_fb"
+        android:title="Clear All Transactions (FB)" 
         app:showAsAction="never" />
-    <!-- Add any other menu items you need here -->
 </menu>

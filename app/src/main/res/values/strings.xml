@@ -148,6 +148,14 @@
         <!-- Other strings -->
         <string name="channel_name_transactions">Transactions</string>
         <string name="channel_description_transactions">Received or Spent</string>
+
+    <!-- GPay Transactions Specific -->
+    <string name="gpay_transactions_in_fb">GPay Transactions (FB)</string>
+    <string name="channel_name_gpay_transactions">GPay Transactions</string>
+    <string name="channel_description_gpay_transactions">Notifications for new GPay transactions synced from CSV</string>
+    <string name="upload_gpay_csv">Upload GPay CSV</string>
+    <string name="clear_all_gpay_data_fb">Clear All GPay Data (FB)</string>
+
     <!--
         Haven't found some strings? There's more at
         https://github.com/FossifyOrg/Commons/tree/master/commons/src/main/res

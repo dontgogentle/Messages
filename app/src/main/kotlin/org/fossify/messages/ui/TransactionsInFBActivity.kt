@@ -406,8 +406,6 @@ class TransactionsInFBActivity : SimpleActivity() {
         // Check if the current flavor is fbTransactionsOnly
         if (BuildConfig.FLAVOR == "fbTransactionsOnly") {
             menuInflater.inflate(R.menu.menu_transactions_fb, menu)
-            // Don't inflate or show any menu for this flavor
-            //menu.clear() // Clear any items that might have been added by a superclass
             return true // Return false to indicate no menu should be displayed
         } else {
             // Existing menu inflation logic for other flavors
@@ -431,16 +429,21 @@ class TransactionsInFBActivity : SimpleActivity() {
                 finish() // Optional: finish this activity
                 true
             }
+            R.id.action_open_gpay_transactions_fb -> { // not applicable for fbOnly flavor
+                startActivity(Intent(this, GPayTransactionsInFBActivity::class.java))
+                finish() // Optional: finish this activity
+                true
+            }
             android.R.id.home -> {
                 onBackPressedDispatcher.onBackPressed() // Use this for proper back navigation
                 true
             }
-            R.id.action_add_dummy_fb -> {
+           /* R.id.action_add_dummy_fb -> {
                 //TODO add a menu user could use
                 // I am thinking could provide site names to display site specific transactions
-                /*if (USE_FIREBASE_DATA) {
+                if (USE_FIREBASE_DATA) {
                     addDummyTransactionToFB()
-                } */
+                }
                 true
             }
             R.id.action_clear_all_fb -> {
@@ -450,7 +453,7 @@ class TransactionsInFBActivity : SimpleActivity() {
                     adapter.updateData(emptyList()) // Clear sample data
                 }
                 true
-            }
+            }*/
             else -> super.onOptionsItemSelected(item)
         }
     }
