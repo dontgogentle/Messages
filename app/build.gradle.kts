@@ -97,6 +97,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            buildConfigField("String", "SMS_FIREBASE_ROOT_PATH", "\"sms_by_date_debug\"")
         }
         release {
             isMinifyEnabled = true
@@ -109,6 +110,7 @@ android {
             if (keystorePropertiesFile.exists() || hasSigningVars()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            buildConfigField("String", "SMS_FIREBASE_ROOT_PATH", "\"sms_by_date\"")
         }
     }
 
@@ -215,3 +217,4 @@ androidComponents {
         variant.applicationId.set("org.fossify.messages.fbOnly")
     }
 }
+

@@ -438,16 +438,6 @@ class MainActivity : SimpleActivity() {
     }
 
 
-    fun convertToTimestamp(dateStr: String?): Long {
-        val formatter = DateTimeFormatter.ofPattern("dd-MMM-yy")
-        val localDate = if (dateStr != null) {
-            LocalDate.parse(dateStr, formatter)
-        } else {
-            LocalDate.now()
-        }
-        return localDate.atStartOfDay(ZoneId.systemDefault()).toEpochSecond()
-    }
-
     // --- Start of Firebase SMS Sync Logic ---
     private suspend fun syncNewSmsToFirebase(context: Context) {
         withContext(Dispatchers.IO) { // Perform sync operations on a background thread
@@ -494,9 +484,9 @@ class MainActivity : SimpleActivity() {
 //                                message.date * 1000L // Assuming processor expects milliseconds
 //                            )
 
-                            val transactionInfo = TransactionProcessor.parseMessage(message.body)
-//                            transactionInfo?.date = message.date.toLong()
-                            transactionInfo?.date = convertToTimestamp(transactionInfo.strDateInMessage) //TODO find out the right member to retrieve the date/timestamp from the message.
+                            val transactionInfo = TransactionProcessor.parseMessage(message)
+//                            transactionInfo?.date = message.date //.toLong()
+//                            transactionInfo?.date = convertToTimestamp(transactionInfo.strDateInMessage) //TODO find out the right member to retrieve the date/timestamp from the message.
                                  // TODO: it is after all available in the message conversation thread activity.
 
                             if (transactionInfo != null) {
@@ -512,7 +502,7 @@ class MainActivity : SimpleActivity() {
 
 //                                if (success) {
 //                                    Log.i("MainActivity", "Successfully pushed message ID ${message.id} (key: ${transactionInfo.key}) to Firebase path: J5/sms_by_date/$datePath")
-                                    newLatestTimestampToUpdate = message.date.toLong() // Update with the timestamp (in seconds) of the successfully pushed message
+                                    newLatestTimestampToUpdate = message.date //.toLong() // Update with the timestamp (in seconds) of the successfully pushed message
 //                                } else {
 //                                    Log.e("MainActivity", "Failed to push message ID ${message.id} to Firebase.")
 //                                    // Optionally, break or implement retry logic
@@ -542,10 +532,10 @@ class MainActivity : SimpleActivity() {
         return address?.contains("-ICICIT-", ignoreCase = true) == true
     }
 
-    private fun formatDateForFirebasePath(timestampMs: Long): String {
-        val sdf = SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH) // Using English for month consistency
-        return sdf.format(Date(timestampMs))
-    }
+//    private fun formatDateForFirebasePath(timestampMs: Long): String {
+//        val sdf = SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH) // Using English for month consistency
+//        return sdf.format(Date(timestampMs))
+//    }
     // --- End of Firebase SMS Sync Logic ---
 
 

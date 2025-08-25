@@ -9,7 +9,9 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import org.fossify.commons.extensions.formatDateOrTime
 import org.fossify.messages.R
+import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.ui.TransactionInfo // Ensure this is the correct import
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -20,10 +22,10 @@ import java.util.TimeZone
 // Sealed class for different item types in the RecyclerView
 sealed class AdapterItemFB {
     data class TransactionItem(val transaction: TransactionInfo) : AdapterItemFB()
-    data class DateHeaderItem(val dateString: String) : AdapterItemFB()
+    data class DateHeaderItem(val date: Int) : AdapterItemFB()
 }
 
-class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
+class TransactionsAdapterFB(activity: SimpleActivity, initialTransactions: List<TransactionInfo>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var displayItems: MutableList<AdapterItemFB> = mutableListOf()
@@ -93,14 +95,14 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
                 }
                 transactionHolder.amountTextView.text = transaction.amount
 
-                val displayDateText = if (transaction.date != null) {
-                    SimpleDateFormat("dd MMM yy, hh:mm a", Locale.getDefault()).format(Date(transaction.date!!))
-                } else if (!transaction.strDateInMessage.isNullOrEmpty()) {
-                    transaction.strDateInMessage
-                } else {
-                    "No Date"
+                transactionHolder.dateTextView.apply {
+                    text = (transaction.date * 1000L).formatDateOrTime(
+                        context = context,
+                        hideTimeOnOtherDays = false,
+                        showCurrentYear = false
+                    )
                 }
-                transactionHolder.dateTextView.text = displayDateText
+
                 transactionHolder.dateTextView.setTypeface(null, Typeface.NORMAL)
 
                 val typeText = when (transaction.transactionType.lowercase(Locale.getDefault())) {
@@ -161,7 +163,15 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
             }
             is AdapterItemFB.DateHeaderItem -> {
                 val dateHeaderHolder = holder as DateHeaderViewHolder
-                dateHeaderHolder.dateHeaderTextView.text = currentItem.dateString
+//                dateHeaderHolder.dateHeaderTextView.text = currentItem.date
+
+                dateHeaderHolder.dateHeaderTextView.apply {
+                    text = (currentItem.date * 1000L).formatDateOrTime(
+                        context = context,
+                        hideTimeOnOtherDays = true,
+                        showCurrentYear = true
+                    )
+                }
             }
         }
     }
@@ -183,7 +193,7 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
             return
         }
 
-        val sortedTransactions = newTransactions.sortedByDescending { it.date ?: 0L }
+        val sortedTransactions = newTransactions.sortedByDescending { it.date ?: 0 }
         Log.d(TAG, "Transactions sorted. Total: ${sortedTransactions.size}")
 
         val calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
@@ -197,7 +207,7 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
 
         for ((index, transaction) in sortedTransactions.withIndex()) {
             val transactionDateMillis = transaction.date ?: continue // Skip if date is null
-            calendar.timeInMillis = transactionDateMillis
+            calendar.timeInMillis = (transactionDateMillis*1000).toLong()
 
             val currentTransactionDay = calendar.get(Calendar.DAY_OF_MONTH)
             val currentTransactionMonth = calendar.get(Calendar.MONTH) // 0-indexed
@@ -211,8 +221,9 @@ class TransactionsAdapterFB(initialTransactions: List<TransactionInfo>) :
                 currentTransactionDay != lastHeaderDay
             ) {
                 val currentDateHeaderString = headerFormatter.format(calendar.time)
+
                 Log.i(TAG, "Date change detected! Adding header: '$currentDateHeaderString'")
-                newDisplayItems.add(AdapterItemFB.DateHeaderItem(currentDateHeaderString))
+                newDisplayItems.add(AdapterItemFB.DateHeaderItem(transaction.date))
                 lastHeaderYear = currentTransactionYear
                 lastHeaderMonth = currentTransactionMonth
                 lastHeaderDay = currentTransactionDay

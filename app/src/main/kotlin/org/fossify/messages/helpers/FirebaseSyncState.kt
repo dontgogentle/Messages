@@ -21,13 +21,13 @@ object FirebaseSyncState {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     @Volatile
-    private var smsLastMsgTimestamp: Long = 0L
+    private var smsLastMsgTimestamp: Int = 0
     @Volatile
     private var initialized: Boolean = false
     @Volatile
     private var initializing: Boolean = false
 
-    fun initialize(callback: ((success: Boolean, timestamp: Long) -> Unit)? = null) {
+    fun initialize(callback: ((success: Boolean, timestamp: Int) -> Unit)? = null) {
         if (initialized || initializing) {
             callback?.invoke(initialized, smsLastMsgTimestamp)
             return
@@ -38,7 +38,7 @@ object FirebaseSyncState {
         database.child(FB_GLOBALS_PATH).child(FB_SMS_LAST_MSG_TIMESTAMP_KEY)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val timestamp = snapshot.getValue(Long::class.java) ?: 0L
+                    val timestamp = snapshot.getValue(Int::class.java) ?: 0
                     smsLastMsgTimestamp = timestamp
                     initialized = true
                     initializing = false
@@ -49,7 +49,7 @@ object FirebaseSyncState {
                 override fun onCancelled(error: DatabaseError) {
                     TODO("Not yet implemented")
                     Log.e(TAG, "Error initializing smsLastMsgTimestamp: ${error.message}")
-                    smsLastMsgTimestamp = 0L // Default to 0 on error
+                    smsLastMsgTimestamp = 0 // Default to 0 on error
                     initialized = false // Consider if an error means it's not truly initialized
                     initializing = false
                     callback?.invoke(false, smsLastMsgTimestamp)
@@ -57,14 +57,14 @@ object FirebaseSyncState {
             })
     }
 
-    fun getLastMsgTimestamp(): Long {
+    fun getLastMsgTimestamp(): Int {
         if (!initialized && !initializing) {
             Log.w(TAG, "Accessed getLastMsgTimestamp before initialization. Consider calling initialize() first.")
         }
         return smsLastMsgTimestamp
     }
 
-    fun updateLastMsgTimestampInFirebase(newTimestamp: Long) {
+    fun updateLastMsgTimestampInFirebase(newTimestamp: Int) {
         if (!initialized && !initializing) {
             // If not initialized, it means we don't know the baseline from FB.
             // Updating FB without this baseline could lead to inconsistencies.
@@ -90,7 +90,7 @@ object FirebaseSyncState {
     }
 
     // Call this if you want to ensure it's initialized before proceeding using coroutines
-    suspend fun awaitInitialization(): Long {
+    suspend fun awaitInitialization(): Int {
         if (initialized) return smsLastMsgTimestamp
         if (initializing) {
             // A simple way to wait for ongoing initialization if called from a coroutine.

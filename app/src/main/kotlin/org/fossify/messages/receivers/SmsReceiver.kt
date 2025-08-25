@@ -166,7 +166,7 @@ class SmsReceiver : BroadcastReceiver() {
                     Log.d(TAG, "--- Firebase Push Logic Start ---")
                     Log.d(TAG, "Body to parse for Firebase: ${body.take(100)}")
                     val parsed: TransactionInfo? = try {
-                        TransactionProcessor.parseMessage(body)
+                        TransactionProcessor.parseMessage(message)
                     } catch (e: Exception) {
                         Log.e(TAG, "Exception during TransactionProcessor.parseMessage", e)
                         null

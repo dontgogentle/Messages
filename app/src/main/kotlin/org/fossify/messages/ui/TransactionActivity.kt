@@ -30,7 +30,7 @@ import org.fossify.messages.utils.TransactionProcessor // Import TransactionProc
 data class TransactionInfo(
     var id: String? = null,
     var strDateInMessage: String? = "", // For "dd-MMM-yy" string from SMS, was 'date'
-    var date: Long? = null,             // For epoch timestamp
+    var date: Int,             // For epoch timestamp
     val account: String = "",
     val transactionType: String = "", // "CREDIT" or "DEBIT"
     val amount: String = "",
@@ -156,63 +156,64 @@ class TransactionActivity : AppCompatActivity() {
     }
 
     private fun loadTransactions() {
-        val tag = "TransactionActivityLoad"
-        Log.d(tag, "Not Starting to load SMS transactions...")
-        if (true) return // This line seems to intentionally block loading, keeping it as is.
-
-        Log.d(tag, "Starting to load SMS transactions...")
-        transactions.clear()
-
-        val cursor = contentResolver.query(
-            Uri.parse("content://sms/inbox"),
-            null, 
-            null, 
-            null, 
-            "date DESC"
-        )
-
-        if (cursor == null) {
-            Log.w(tag, "SMS query returned null cursor.")
-            Toast.makeText(this, "Could not query SMS messages.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        var totalMessages = 0
-        var parsedCount = 0
-        val localTransactionsBatch = mutableListOf<TransactionInfo>()
-
-        cursor.use {
-            while (it.moveToNext()) {
-                totalMessages++
-                val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
-                if (bodyIndex != -1) {
-                    val body = it.getString(bodyIndex)
-                    val parsed = TransactionProcessor.parseMessage(body)
-                    if (parsed != null) {
-                        parsedCount++
-                        localTransactionsBatch.add(parsed)
-                    } else {
-                        // Log.d(tag, "Skipped SMS: No match for body: ${body.take(50)}...")
-                    }
-                } else {
-                    Log.w(tag, "Column Telephony.Sms.BODY not found in cursor.")
-                }
-            }
-        }
-        
-        Log.i(tag, "Finished loading SMS from device. Total: $totalMessages, Parsed: $parsedCount")
-        
-        // Update the main list and adapter
-        // Ensure to use strDateInMessage for distinctness if that was the old logic
-        transactions.addAll(localTransactionsBatch.distinctBy { it.raw + it.strDateInMessage }) 
-        // Sort by the new 'date' (timestamp) field for UI consistency
-        adapter.updateData(transactions.distinctBy { it.raw + it.strDateInMessage }.sortedByDescending { it.date }) 
-
-        if (localTransactionsBatch.isNotEmpty()) {
-            Log.d(tag, "Calling batch pushToFirebase with ${localTransactionsBatch.size} transactions.")
-            TransactionProcessor.pushToFirebase(localTransactionsBatch.toList())
-        } else {
-            Log.d(tag, "No new transactions parsed from SMS to push to Firebase.")
-        }
+        return
+//        val tag = "TransactionActivityLoad"
+//        Log.d(tag, "Not Starting to load SMS transactions...")
+//        if (true) return // This line seems to intentionally block loading, keeping it as is.
+//
+//        Log.d(tag, "Starting to load SMS transactions...")
+//        transactions.clear()
+//
+//        val cursor = contentResolver.query(
+//            Uri.parse("content://sms/inbox"),
+//            null,
+//            null,
+//            null,
+//            "date DESC"
+//        )
+//
+//        if (cursor == null) {
+//            Log.w(tag, "SMS query returned null cursor.")
+//            Toast.makeText(this, "Could not query SMS messages.", Toast.LENGTH_SHORT).show()
+//            return
+//        }
+//
+//        var totalMessages = 0
+//        var parsedCount = 0
+//        val localTransactionsBatch = mutableListOf<TransactionInfo>()
+//
+//        cursor.use {
+//            while (it.moveToNext()) {
+//                totalMessages++
+//                val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
+//                if (bodyIndex != -1) {
+//                    val body = it.getString(bodyIndex)
+//                    val parsed = TransactionProcessor.parseMessage(body)
+//                    if (parsed != null) {
+//                        parsedCount++
+//                        localTransactionsBatch.add(parsed)
+//                    } else {
+//                        // Log.d(tag, "Skipped SMS: No match for body: ${body.take(50)}...")
+//                    }
+//                } else {
+//                    Log.w(tag, "Column Telephony.Sms.BODY not found in cursor.")
+//                }
+//            }
+//        }
+//
+//        Log.i(tag, "Finished loading SMS from device. Total: $totalMessages, Parsed: $parsedCount")
+//
+//        // Update the main list and adapter
+//        // Ensure to use strDateInMessage for distinctness if that was the old logic
+//        transactions.addAll(localTransactionsBatch.distinctBy { it.raw + it.strDateInMessage })
+//        // Sort by the new 'date' (timestamp) field for UI consistency
+//        adapter.updateData(transactions.distinctBy { it.raw + it.strDateInMessage }.sortedByDescending { it.date })
+//
+//        if (localTransactionsBatch.isNotEmpty()) {
+//            Log.d(tag, "Calling batch pushToFirebase with ${localTransactionsBatch.size} transactions.")
+//            TransactionProcessor.pushToFirebase(localTransactionsBatch.toList())
+//        } else {
+//            Log.d(tag, "No new transactions parsed from SMS to push to Firebase.")
+//        }
     }
 }

@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.content.SharedPreferences
 import com.google.firebase.database.*
+import org.fossify.commons.extensions.toInt
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ActivityTransactionsInFbBinding
 import java.util.Calendar
@@ -27,11 +28,13 @@ import java.util.Date
 import java.util.Locale // Added for SimpleDateFormat Locale
 import org.fossify.messages.BuildConfig // Replace org.fossify.messages with your actual applicationId
 import org.fossify.messages.activities.MainActivity
+import org.fossify.messages.activities.SimpleActivity
+import org.fossify.messages.helpers.FirebaseConstants
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class TransactionsInFBActivity : AppCompatActivity() {
+class TransactionsInFBActivity : SimpleActivity() {
 
     private lateinit var binding: ActivityTransactionsInFbBinding
     private lateinit var database: DatabaseReference
@@ -61,7 +64,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
         setupRecyclerView()
 
         if (USE_FIREBASE_DATA) {
-            database = FirebaseDatabase.getInstance().getReference("J5/sms_by_date")
+            database = FirebaseDatabase.getInstance().getReference("J5/${FirebaseConstants.SMS_NODES_PATH}")
             loadTransactionsFromFB()
             setupTodayTransactionsListener()
         } else {
@@ -84,7 +87,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
         transactionsRecyclerView = binding.recyclerViewTransactionsFb
         transactionsRecyclerView.layoutManager = LinearLayoutManager(this)
         // Initialize adapter with an empty list first
-        adapter = TransactionsAdapterFB(emptyList()) // Pass emptyList to constructor
+        adapter = TransactionsAdapterFB(this, emptyList()) // Pass emptyList to constructor
         transactionsRecyclerView.adapter = adapter
     }
 
@@ -97,14 +100,14 @@ class TransactionsInFBActivity : AppCompatActivity() {
         calendar.set(Calendar.HOUR_OF_DAY, 10)
         calendar.set(Calendar.MINUTE, 0)
         sampleList.add(TransactionInfo(
-            id = "sample1", name = "Coffee Shop", amount = "₹150.00", date = calendar.timeInMillis,
+            id = "sample1", name = "Coffee Shop", amount = "₹150.00", date = (calendar.timeInMillis / 1000).toInt(),
             transactionType = "debit", raw = "Debit from XXX123 for Coffee Shop Ref 9876",
             strDateInMessage = sdf.format(calendar.time),
             account = "XX1234", transactionReference = "9876", upi = "coffeeshop@upi", accountBalance = "₹4850.00", isRawExpanded = false
         ))
         calendar.set(Calendar.HOUR_OF_DAY, 14)
         sampleList.add(TransactionInfo(
-            id = "sample2", name = "Salary Credit", amount = "₹50000.00", date = calendar.timeInMillis,
+            id = "sample2", name = "Salary Credit", amount = "₹50000.00", date = (calendar.timeInMillis / 1000).toInt(),
             transactionType = "credit", raw = "Credit to XXX123 Salary Ref 1234. Avl Bal 50000.00",
             strDateInMessage = sdf.format(calendar.time),
             account = "XX1234", transactionReference = "1234", upi = "", accountBalance = "₹50000.00", isRawExpanded = false
@@ -114,7 +117,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
         calendar.add(Calendar.DAY_OF_YEAR, -1)
         calendar.set(Calendar.HOUR_OF_DAY, 18)
         sampleList.add(TransactionInfo(
-            id = "sample3", name = "Grocery Store", amount = "₹2500.00", date = calendar.timeInMillis,
+            id = "sample3", name = "Grocery Store", amount = "₹2500.00", date = (calendar.timeInMillis / 1000).toInt(),
             transactionType = "debit", raw = "Spent at BigBasket Ref 5555",
             strDateInMessage = sdf.format(calendar.time),
             account = "XX5678", transactionReference = "5555", upi = "bigbasket@scanner", accountBalance = "₹2500.00", isRawExpanded = false
@@ -124,14 +127,14 @@ class TransactionsInFBActivity : AppCompatActivity() {
         calendar.add(Calendar.DAY_OF_YEAR, -1)
         calendar.set(Calendar.HOUR_OF_DAY, 9)
         sampleList.add(TransactionInfo(
-            id = "sample4", name = "Online Subscription", amount = "₹499.00", date = calendar.timeInMillis,
+            id = "sample4", name = "Online Subscription", amount = "₹499.00", date = (calendar.timeInMillis / 1000).toInt(),
             transactionType = "debit", raw = "Netflix recurring payment",
             strDateInMessage = sdf.format(calendar.time),
             account = "XX1234", transactionReference = "NFX1122", upi = "", accountBalance = "₹2001.00", isRawExpanded = false
         ))
         calendar.set(Calendar.HOUR_OF_DAY, 11)
         sampleList.add(TransactionInfo(
-            id = "sample5", name = "Friend Transfer", amount = "₹1000.00", date = calendar.timeInMillis,
+            id = "sample5", name = "Friend Transfer", amount = "₹1000.00", date = (calendar.timeInMillis / 1000).toInt(),
             transactionType = "credit", raw = "Received from John Doe",
             strDateInMessage = sdf.format(calendar.time),
             account = "XX1234", transactionReference = "IMPS7788", upi = "john@upi", accountBalance = "₹3001.00", isRawExpanded = false
@@ -169,7 +172,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
 
         // --- Logic for date and strDateInMessage ---
         var finalStrDateInMessage = ""
-        var finalTimestamp = 0L
+        var finalTimestamp = 0
 
         // 1. Check for "strDateInMessage" field first
         val strDateFromNode = transactionNode.child("strDateInMessage").getValue(String::class.java)
@@ -184,13 +187,13 @@ class TransactionsInFBActivity : AppCompatActivity() {
         }
 
         // 2. Check for "date" field (could be Long timestamp or String date)
-        val dateValue = transactionNode.child("date").value // Get value without specific type first
-        if (dateValue != null) {
+        val dateValue = (transactionNode.child("date").value ?: 0).toInt() // Get value without specific type first
+        /* if (dateValue != null) {
             when (dateValue) {
-                is Long -> { // It's a timestamp
+                is Int -> { // It's a timestamp
                     finalTimestamp = dateValue
                     if (finalStrDateInMessage.isBlank()) { // Only format if strDateInMessage wasn't already set
-                        finalStrDateInMessage = timestampFormatter.format(Date(finalTimestamp))
+                        finalStrDateInMessage = timestampFormatter.format(Date((finalTimestamp*1000).toLong()))
                     }
                 }
                 is String -> { // It's a date string
@@ -198,7 +201,7 @@ class TransactionsInFBActivity : AppCompatActivity() {
                     try {
                         val parsedDate = shortDateFormat.parse(dateValue)
                         if (parsedDate != null) {
-                            finalTimestamp = parsedDate.time
+                            finalTimestamp = (parsedDate.time/1000).toInt()
                             if (finalStrDateInMessage.isBlank()) {
                                 // If it's just 'dd-MMM-yy', format it for consistency or keep as is?
                                 // For now, let's reformat with a default time part if only date was found.
@@ -221,21 +224,21 @@ class TransactionsInFBActivity : AppCompatActivity() {
                     Log.w("ParseTransaction", "Unknown type for 'date' field: ${dateValue::class.java.simpleName}")
                 }
             }
-        }
+        } */
 
         // If after all checks, finalTimestamp is still 0L and strDateInMessage is blank,
         // you might want a more robust default or logging.
-        if (finalTimestamp == 0L && finalStrDateInMessage.isBlank()) {
-            finalStrDateInMessage = "Date N/A" // Default if no date info found
-            // finalTimestamp remains 0L or you could set it to System.currentTimeMillis() or null if date is nullable Long?
-        }
+//        if (finalTimestamp == 0 && finalStrDateInMessage.isBlank()) {
+//            finalStrDateInMessage = "Date N/A" // Default if no date info found
+//            // finalTimestamp remains 0L or you could set it to System.currentTimeMillis() or null if date is nullable Long?
+//        }
 
-        finalStrDateInMessage = transactionNode.child("strDateInMessage").getValue(String::class.java) ?: "Date N/A"
-        finalTimestamp  = convertToTimestamp(finalStrDateInMessage)
-        val parsedDate = shortDateFormat.parse(finalStrDateInMessage)
-        if (parsedDate != null) {
-            finalTimestamp = parsedDate.time
-        }
+//        finalStrDateInMessage = transactionNode.child("strDateInMessage").getValue(String::class.java) ?: "Date N/A"
+//        finalTimestamp  = convertToTimestamp(finalStrDateInMessage)
+//        val parsedDate = shortDateFormat.parse(finalStrDateInMessage)
+//        if (parsedDate != null) {
+//            finalTimestamp = parsedDate.time
+//        }
 
         account = account ?: "Unknown Acc"
         transactionReference = transactionReference ?: "Unknown Ref"
@@ -244,10 +247,10 @@ class TransactionsInFBActivity : AppCompatActivity() {
             id = id,
             name = name,
             amount = amount,
-            date = finalTimestamp, // This is our primary timestamp
+            date = dateValue, // This is our primary timestamp
             transactionType = transactionType,
             raw = raw,
-            strDateInMessage = finalStrDateInMessage, // This is the string representation
+            strDateInMessage = finalStrDateInMessage, // This is the string representation //TODO: get rid of this shit
             account = account,
             transactionReference = transactionReference,
             upi = upi,
@@ -447,35 +450,6 @@ class TransactionsInFBActivity : AppCompatActivity() {
             else -> super.onOptionsItemSelected(item)
         }
     }
-
-    private fun addDummyTransactionToFB() {
-        val key = database.push().key ?: return
-        val calendar = Calendar.getInstance() // For date consistency if needed
-        val sdf = SimpleDateFormat("dd MMM yy, hh:mm a", Locale.getDefault())
-        val dummyTransaction = TransactionInfo(
-            id = key,
-            name = "Dummy Transaction ${System.currentTimeMillis() % 100}",
-            amount = "₹${(100..1000).random()}.00",
-            transactionType = if (Math.random() < 0.5) "credit" else "debit",
-            date = System.currentTimeMillis(),
-            strDateInMessage = sdf.format(Date()), // Use current date for strDateInMessage
-            account = "FBTestACC",
-            transactionReference = "FBRef${(1000..9999).random()}",
-            upi = "dummy@fb",
-            accountBalance = "₹${(5000..10000).random()}.00",
-            raw = "This is a dummy transaction added via app for Firebase testing.",
-            isRawExpanded = false
-        )
-        database.child(key).setValue(dummyTransaction)
-            .addOnSuccessListener {
-                Log.d("TransactionsInFB", "Dummy transaction added to Firebase.")
-            }
-            .addOnFailureListener {
-                Log.e("TransactionsInFB", "Failed to add dummy transaction to Firebase.", it)
-            }
-    }
-
-
     private fun clearAllTransactionsFromFB() {
         database.removeValue()
             .addOnSuccessListener {

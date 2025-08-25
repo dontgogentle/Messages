@@ -3,6 +3,8 @@ package org.fossify.messages.utils
 import android.content.Context // Keep if used, otherwise consider removing
 import android.util.Log
 import com.google.firebase.database.FirebaseDatabase
+import org.fossify.messages.helpers.FirebaseConstants // Added import
+import org.fossify.messages.models.Message
 import org.fossify.messages.ui.TransactionInfo // Ensure this is the correct TransactionInfo
 import java.util.UUID
 import java.security.MessageDigest
@@ -25,7 +27,8 @@ object TransactionProcessor {
         return amount.replace(",", "")
     }
 
-    fun parseMessage(body: String): TransactionInfo? {
+    fun parseMessage(message: Message): TransactionInfo? {
+        val body = message.body
         for (regex in regexes) {
             val matchResult = regex.find(body)
             if (matchResult != null) {
@@ -36,7 +39,7 @@ object TransactionProcessor {
                         transactionType = "CREDIT",
                         amount = cleanAmount(it.groupValues[2]), // ([\d,]+\.?\d{0,2}) - Amount
                         strDateInMessage = it.groupValues[3],    // (\d{2}-\w{3}-\d{2}) - Date
-                        date = System.currentTimeMillis(),
+                        date = message.date,
                         transactionReference = it.groupValues[4].trim(), // ([^.]+?) - Info
                         accountBalance = cleanAmount(it.groupValues[5]), // ([\d,]+\.?\d{0,2}) - Available Balance
                         raw = body
@@ -47,7 +50,7 @@ object TransactionProcessor {
                         transactionType = "CREDIT",
                         amount = cleanAmount(it.groupValues[2]), // ([\d,]+\.?\d{0,2}) - Amount
                         strDateInMessage = it.groupValues[3],    // (\d{2}-\w{3}-\d{2}) - Date
-                        date = System.currentTimeMillis(),
+                        date = message.date,
                         receivedFrom = it.groupValues[4].trim(), // (.+?) - From/Sender Name
                         name = it.groupValues[4].trim(),         // Also use for 'name' field
                         upi = it.groupValues[5].trim(),          // (\S+) - UPI Reference
@@ -60,7 +63,7 @@ object TransactionProcessor {
                         transactionType = "DEBIT",
                         amount = cleanAmount(it.groupValues[2]), // ([\d,]+\.?\d{0,2}) - Amount
                         strDateInMessage = it.groupValues[3],    // (\d{2}-\w{3}-\d{2}) - Date
-                        date = System.currentTimeMillis(),
+                        date = message.date,
                         transferredTo = it.groupValues[4].trim(),// (.+?) - Transferred To (before " credited.")
                         name = it.groupValues[4].trim(),         // Also use for 'name' field
                         upi = it.groupValues[5].trim(),          // (\S+) - UPI Reference
@@ -73,7 +76,7 @@ object TransactionProcessor {
                         transactionType = "CREDIT",
                         amount = cleanAmount(it.groupValues[2]), // ([\d,]+\.?\d{0,2}) - Amount
                         strDateInMessage = it.groupValues[3],    // (\d{2}-\w{3}-\d{2}) - Date
-                        date = System.currentTimeMillis(),
+                        date = message.date,
                         receivedFrom = it.groupValues[4].trim(), // (.+?) - From/Sender Name
                         name = it.groupValues[4].trim(),         // Also use for 'name' field
                         upi = it.groupValues[5].trim(),          // (\S+) - UPI Reference
@@ -106,14 +109,14 @@ object TransactionProcessor {
         val deterministicId = generateDeterministicId(transactionInfoToPush.raw)
 
         transactionInfoToPush.id = deterministicId // Set the ID on the copy
-        transactionInfoToPush.date = System.currentTimeMillis() // Set current timestamp on the copy
+//        transactionInfoToPush.date = System.currentTimeMillis() // Set current timestamp on the copy
 
         val dateForPath = transactionInfoToPush.strDateInMessage ?: "unknown-date"
-        val databaseReference = FirebaseDatabase.getInstance().getReference("$site/sms_by_date/$dateForPath/$deterministicId")
+        val databaseReference = FirebaseDatabase.getInstance().getReference("$site/${FirebaseConstants.SMS_NODES_PATH}/$dateForPath/$deterministicId")
 
         databaseReference.setValue(transactionInfoToPush)
             .addOnSuccessListener {
-                // Log.d("TransactionProcessor", "Transaction successfully written to Firebase with ID: $deterministicId at $site/sms_by_date/$dateForPath")
+                // Log.d("TransactionProcessor", "Transaction successfully written to Firebase with ID: $deterministicId at $site/${FirebaseConstants.SMS_NODES_PATH}/$dateForPath")
             }
             .addOnFailureListener { e ->
                 Log.e("TransactionProcessor", "Failed to write transaction to Firebase ID: $deterministicId. Error: ${e.message}", e)
