@@ -4,11 +4,9 @@ import android.Manifest
 import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -20,18 +18,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ActivityGpayTransactionsInFbBinding
-import java.util.Calendar
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import org.fossify.messages.BuildConfig
 import org.fossify.messages.activities.MainActivity
@@ -63,7 +56,7 @@ data class GPayTransactionInfo(
 class GPayTransactionsInFBActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityGpayTransactionsInFbBinding
-    private lateinit var database: DatabaseReference
+    private lateinit var database: DatabaseReference // Main DB reference, initialized in onCreate
     private lateinit var transactionsRecyclerView: RecyclerView
     private lateinit var adapter: GPayTransactionsAdapterFB
     private var transactionsList = mutableListOf<GPayTransactionInfo>()
@@ -88,13 +81,13 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                     } ?: Log.e(TAG, "Could not open input stream for URI: $uri")
                 } catch (e: FileNotFoundException) {
                     Log.e(TAG, "CSV file not found for URI: $uri", e)
-                    // TODO: Show user feedback
+                    Toast.makeText(this, "CSV file not found.", Toast.LENGTH_LONG).show()
                 } catch (e: IOException) {
                     Log.e(TAG, "Error reading CSV file for URI: $uri", e)
-                    // TODO: Show user feedback
+                    Toast.makeText(this, "Error reading CSV file.", Toast.LENGTH_LONG).show()
                 } catch (e: Exception) {
                     Log.e(TAG, "An unexpected error occurred during CSV processing for URI: $uri", e)
-                    // TODO: Show user feedback
+                    Toast.makeText(this, "An unexpected error occurred.", Toast.LENGTH_LONG).show()
                 }
             }
         } else {
@@ -112,8 +105,11 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
 
         setupRecyclerView()
 
+        // Initialize database reference here
+        database = FirebaseDatabase.getInstance().reference // Base reference
+
         if (USE_FIREBASE_DATA) {
-            database = FirebaseDatabase.getInstance().getReference("gpay")
+            // loadTransactionsFromFB will use database.child("gpay") or similar
             loadTransactionsFromFB()
         } else {
             Log.d(TAG, "Using sample data for testing - not implemented for GPay yet.")
@@ -173,7 +169,6 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
-//            launchCsvPicker()
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*" // MIME type for CSV files
@@ -181,24 +176,24 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
             openCsvLauncher.launch(intent)
         } else {
             Log.e(TAG, "Permission denied. Cannot access external storage.")
-            // TODO: Show user feedback
+            Toast.makeText(this, "Permission denied to read storage.", Toast.LENGTH_LONG).show()
+
         }
     }
 
     fun launchCsvPickerWithPermissionCheck(intent: Intent) {
-
-//        val granted = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
-//        Log.d(TAG, "Permission status: $granted")
+        Log.e(TAG, "Permission check 1.")
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
             != PackageManager.PERMISSION_GRANTED
         ) {
+            Log.e(TAG, "Permission check request permission.")
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
                 REQUEST_CODE_READ_STORAGE
             )
         } else {
-//                launchCsvPicker()
+            Log.e(TAG, "Permission check ok launch file picker.")
             openCsvLauncher.launch(intent)
         }
     }
@@ -209,8 +204,8 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*" // MIME type for CSV files
         }
-        launchCsvPickerWithPermissionCheck(intent)
-//        openCsvLauncher.launch(intent)
+//        launchCsvPickerWithPermissionCheck(intent)
+        openCsvLauncher.launch(intent)
     }
 
     private fun setupRecyclerView() {
@@ -248,9 +243,6 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
             status = transactionNode.child("status").getValue(String::class.java) ?: "N/A",
             updateTime = transactionNode.child("updateTime").getValue(String::class.java) ?: "N/A",
             notes = transactionNode.child("notes").getValue(String::class.java) ?: "",
-            // creationTimestamp would be populated from 'creationTime' if this node was from a CSV
-            // For now, if it's directly from FB, this might remain 0 or you could try to parse 'creationTime' here too.
-
             creationTimestamp = try {
                 val rawDateStr = transactionNode.child("creationTime").getValue(String::class.java) ?: ""
                 val parsedDate = inputFormatter.parse(rawDateStr)
@@ -258,23 +250,25 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 0
             }
-            //creationTimestamp = try { displayDateTimeFormatter.parse(transactionNode.child("creationTime").getValue(String::class.java) ?: "")?.time ?: 0L } catch (e: Exception) { 0L }
         )
     }
 
     private fun loadTransactionsFromFB() {
         binding.progressBarGpayFb.visibility = View.VISIBLE
-        database.addValueEventListener(object : ValueEventListener {
+        // Assuming database is FirebaseDatabase.getInstance().reference.child("gpay") or similar
+        // For structured data like /gpay/date/id, you might need a more complex query or nested listeners.
+        // This is a simplified listener for /gpay path where IDs are direct children.
+        database.child("gpay").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 transactionsList.clear()
-                for (dateGroupSnapshot in snapshot.children) {
-                    val dateKey = dateGroupSnapshot.key ?: continue
-                    for (transactionNode in dateGroupSnapshot.children) {
+                for (transactionNode in snapshot.children) {
+//                    val dateKey = dateGroupSnapshot.key ?: continue
+//                    for (transactionNode in dateGroupSnapshot.children) {
                         val transaction = parseGPayTransactionNode(transactionNode)
                         transaction?.let {
                             transactionsList.add(it)
                         }
-                    }
+//                    }
                 }
                  transactionsList.sortWith(compareByDescending<GPayTransactionInfo> { it.creationTime }/*.thenByDescending { it.creationTime }*/)
                 adapter.updateData(transactionsList)
@@ -321,10 +315,6 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
         return nextId
     }
 
-    /**
-     * Parses the GPay Business CSV file content.
-     * Expected CSV columns: name, payment source, Type, creation time, transaction ID, amount, payment fee, net amount, status, Update time, Notes
-     */
     private fun parseGPayCsv(inputStream: InputStream): List<GPayTransactionInfo> {
         val transactions = mutableListOf<GPayTransactionInfo>()
         BufferedReader(InputStreamReader(inputStream)).useLines { lines ->
@@ -334,14 +324,13 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                     if (parts.size >= 11) { // Expecting at least 11 columns
                         try {
                             val creationTimeString = parts[3].trim()
-//                            val creationTimestamp = csvDateTimeFormatter.parse(creationTimeString)?.time ?: 0
                             val parsedDate = csvDateTimeFormatter.parse(creationTimeString)
                             val intTimestamp = parsedDate?.let { compactFormatter.format(it).toInt() } ?: 0
 
                             val transaction = GPayTransactionInfo(
                                 name = parts[0].trim(),
                                 paymentSource = parts[1].trim(),
-                                type = parts[2].trim(), // Should be "UPI" generally
+                                type = parts[2].trim(),
                                 creationTime = creationTimeString,
                                 id = parts[4].trim(), // Transaction ID
                                 amount = parts[5].trim(),
@@ -351,7 +340,6 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                                 updateTime = parts[9].trim(),
                                 notes = parts[10].trim(),
                                 creationTimestamp = intTimestamp
-                                // firebaseDateKey will be set before Firebase push if needed
                             )
                             transactions.add(transaction)
                             Log.d(TAG, "Parsed CSV line ${index + 2}: $transaction")
@@ -366,56 +354,88 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
         return transactions
     }
 
-    /**
-     * Handles the list of GPayTransactionInfo objects parsed from the CSV.
-     * TODO: Implement Firebase upload logic here.
-     */
+    private fun sanitizeFirebaseKey(key: String): String {
+        return key.replace(".", "_")
+            .replace("#", "_")
+            .replace("$", "_")
+            .replace("[", "_")
+            .replace("]", "_")
+            .replace("/", "_")
+    }
+
     private fun uploadGPayCsvData(transactions: List<GPayTransactionInfo>) {
         if (transactions.isEmpty()) {
             Log.i(TAG, "No transactions to upload from CSV.")
             Toast.makeText(this, "No transactions found in CSV to upload.", Toast.LENGTH_SHORT).show()
             return
         }
-        Log.i(TAG, "Processing ${transactions.size} GPay transactions for upload to /gpay/{id} path...")
+        Log.i(TAG, "Processing ${transactions.size} GPay transactions for upload...")
         Toast.makeText(this, "Uploading ${transactions.size} transactions...", Toast.LENGTH_SHORT).show()
 
-        var successCount = 0
-        var failureCount = 0
+        val totalTransactions = transactions.size
+        val completedOperations = mutableListOf<Boolean>() // true for success, false for failure
 
         for (transaction in transactions) {
             if (transaction.id.isBlank()) {
                 Log.w(TAG, "Skipping transaction with blank ID: $transaction")
-                failureCount++
+                completedOperations.add(false) // Count as a failure for the summary
+                if (completedOperations.size == totalTransactions) {
+                    handleUploadCompletion(completedOperations)
+                }
                 continue
             }
+
+            var userName = transaction.name?.trim() ?: ""
+            if (userName.isBlank()) { // If name is blank or only whitespace after trim
+                userName = "UnknownUser" // Assign a default user name
+            }
+            val sanitizedUserName = sanitizeFirebaseKey(userName)
+
             Log.d(TAG, "Attempting to upload CSV Transaction: ID=${transaction.id}, Name=${transaction.name}, Amount=${transaction.amount}, Timestamp=${transaction.creationTimestamp}")
 
-            val transactionRef = database.child("gpay").child(transaction.id) // Path: /gpay/{transaction.id}
+            val gpayPath = "gpay" // Root path for GPay transactions
+            val gpayByUserPath = "gpaybyUser" // Root path for user index
 
-            transactionRef.setValue(transaction)
+            val gpayRef = database.child(gpayPath).child(transaction.id)
+            val gpayByUserRef = database.child(gpayByUserPath).child(sanitizedUserName).child(transaction.id)
+
+            gpayRef.setValue(transaction)
                 .addOnSuccessListener {
-                    successCount++
-                    Log.i(TAG, "Successfully uploaded GPay transaction ID ${transaction.id} to Firebase path /gpay/${transaction.id}")
-                    if (successCount + failureCount == transactions.size) {
-                        handleUploadCompletion(successCount, failureCount)
-                    }
+                    Log.i(TAG, "Successfully uploaded GPay transaction ID ${transaction.id} to Firebase path $gpayPath/${transaction.id}")
+
+                    gpayByUserRef.setValue(transaction.creationTimestamp) // Store 'true' or transaction.id as value
+                        .addOnSuccessListener {
+                            Log.i(TAG, "Successfully indexed transaction ID ${transaction.id} under user '$sanitizedUserName' in $gpayByUserPath")
+                            completedOperations.add(true)
+                            if (completedOperations.size == totalTransactions) {
+                                handleUploadCompletion(completedOperations)
+                            }
+                        }
+                        .addOnFailureListener { eUserIndex ->
+                            Log.e(TAG, "Failed to index transaction ID ${transaction.id} under user '$sanitizedUserName' in $gpayByUserPath", eUserIndex)
+                            completedOperations.add(false) // Primary upload succeeded, but indexing failed
+                            if (completedOperations.size == totalTransactions) {
+                                handleUploadCompletion(completedOperations)
+                            }
+                        }
                 }
-                .addOnFailureListener { e ->
-                    failureCount++
-                    Log.e(TAG, "Failed to upload GPay transaction ID ${transaction.id} to Firebase path /gpay/${transaction.id}", e)
-                    if (successCount + failureCount == transactions.size) {
-                        handleUploadCompletion(successCount, failureCount)
+                .addOnFailureListener { eGpay ->
+                    Log.e(TAG, "Failed to upload GPay transaction ID ${transaction.id} to Firebase path $gpayPath/${transaction.id}", eGpay)
+                    completedOperations.add(false)
+                    if (completedOperations.size == totalTransactions) {
+                        handleUploadCompletion(completedOperations)
                     }
                 }
         }
     }
 
-    private fun handleUploadCompletion(successCount: Int, failureCount: Int) {
-        val message = "Upload complete. Successful: $successCount, Failed: $failureCount"
+    private fun handleUploadCompletion(results: List<Boolean>) {
+        val successCount = results.count { it }
+        val failureCount = results.size - successCount
+        val message = "Upload complete. Successful operations: $successCount, Failed operations: $failureCount"
         Log.i(TAG, message)
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-        // TODO: Optionally, trigger a refresh of the data displayed from Firebase if this activity also shows it
-        // For example, if you have a loadTransactionsFromFB() method, you might call it here.
+        // TODO: Optionally, trigger a refresh of the data displayed from Firebase
     }
 
     companion object {
