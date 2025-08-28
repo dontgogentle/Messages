@@ -228,7 +228,7 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
             id = id,
             name = transactionNode.child("name").getValue(String::class.java) ?: "N/A",
             paymentSource = transactionNode.child("paymentSource").getValue(String::class.java) ?: "N/A",
-            type = transactionNode.child("Type").getValue(String::class.java) ?: "UPI",
+//            type = transactionNode.child("Type").getValue(String::class.java) ?: "UPI",
             creationTime = transactionNode.child("creationTime").getValue(String::class.java) ?: "N/A",
             amount = transactionNode.child("amount").getValue(String::class.java) ?: "0",
             paymentFee = transactionNode.child("paymentFee").getValue(String::class.java) ?: "0",
@@ -325,7 +325,7 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                             val transaction = GPayTransactionInfo(
                                 name = parts[0].trim(),
                                 paymentSource = parts[1].trim(),
-                                type = parts[2].trim(),
+//                                type = parts[2].trim(),
                                 creationTime = creationTimeString,
                                 id = parts[4].trim(), // Transaction ID
                                 amount = parts[5].trim(),

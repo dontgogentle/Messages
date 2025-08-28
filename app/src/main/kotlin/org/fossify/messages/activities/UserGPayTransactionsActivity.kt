@@ -7,11 +7,11 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.ProgressBar
+import android.widget.ProgressBar // Keep this, it's used by the activity
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat // Added for color
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
@@ -19,39 +19,26 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ActivityUserGpayTransactionsBinding
-// import org.fossify.messages.models.GPayTransactionFB // Assuming this model exists
+import org.fossify.messages.models.GPayTransactionInfo // IMPORTING THE CORRECT MODEL
 
-// Data Models - GPayTransactionFB is now defined within the file as requested earlier
-data class GPayTransactionFB(
-    val transactionId: String = "",
-    var date: String = "",
-    var description: String = "",
-    var amount: String = "",
-    var type: String = "", // "DEBIT" or "CREDIT"
-    var originalDate: String = "",
-    var originalDescription: String = "",
-    var smsId: Long = -1,
-    var currency: String = "INR" // Default currency
-)
-
+// GPayTransactionFB data class REMOVED
 
 data class ExpandableUserItem(
     val userName: String,
     var isExpanded: Boolean = false,
-    var transactions: List<GPayTransactionFB>? = null,
+    var transactions: List<GPayTransactionInfo>? = null, // CHANGED TO GPayTransactionInfo
     var isLoadingTransactions: Boolean = false
 )
 
 sealed class DisplayListItem {
     data class UserHeaderItem(val userItem: ExpandableUserItem) : DisplayListItem()
-    data class TransactionRowItem(val transaction: GPayTransactionFB) : DisplayListItem()
+    data class TransactionRowItem(val transaction: GPayTransactionInfo) : DisplayListItem() // CHANGED TO GPayTransactionInfo
     data class LoadingTransactionsItem(val userName: String) : DisplayListItem()
     data class NoTransactionsItem(val userName: String) : DisplayListItem()
 
-    // Unique ID for DiffUtil
     open val id: String get() = when (this) {
         is UserHeaderItem -> "user_${userItem.userName}"
-        is TransactionRowItem -> "txn_${transaction.transactionId}"
+        is TransactionRowItem -> "txn_${transaction.id}" // Assuming GPayTransactionInfo has an 'id' field
         is LoadingTransactionsItem -> "loading_$userName"
         is NoTransactionsItem -> "no_txn_$userName"
     }
@@ -74,7 +61,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
         binding = ActivityUserGpayTransactionsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setSupportActionBar(binding.toolbarUserGPayTransactions) // CORRECTED ID
+        setSupportActionBar(binding.toolbarUserGPayTransactions)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = getString(R.string.user_gpay_transactions_title)
 
@@ -103,47 +90,47 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
 
         if (userItem.isExpanded && userItem.transactions == null && !userItem.isLoadingTransactions) {
             userItem.isLoadingTransactions = true
-            buildAndSubmitDisplayList() // Show loading indicator
+            buildAndSubmitDisplayList()
             fetchTransactionsForUser(userItem)
         } else {
-            buildAndSubmitDisplayList() // Just expand/collapse
+            buildAndSubmitDisplayList()
         }
     }
 
     private fun fetchUsers() {
-        binding.progressBarUserGPay.visibility = View.VISIBLE // Corrected ID
-        binding.emptyStateTextViewUserGPay.visibility = View.GONE // Corrected ID
+        binding.progressBarUserGPay.visibility = View.VISIBLE
+        binding.emptyStateTextViewUserGPay.visibility = View.GONE
         binding.usersRecyclerView.visibility = View.GONE
 
         val usersRef = database.getReference("gpaybyUser")
 
         usersRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                binding.progressBarUserGPay.visibility = View.GONE // Corrected ID
+                binding.progressBarUserGPay.visibility = View.GONE
                 usersDataList.clear()
                 snapshot.children.forEach { userSnapshot ->
                     userSnapshot.key?.let { userName ->
                         usersDataList.add(ExpandableUserItem(userName = userName))
                     }
                 }
-                usersDataList.sortBy { it.userName } // Sort users alphabetically
+                usersDataList.sortBy { it.userName }
 
                 if (usersDataList.isEmpty()) {
                     binding.emptyStateTextViewUserGPay.text = getString(R.string.no_users_found)
-                    binding.emptyStateTextViewUserGPay.visibility = View.VISIBLE // Corrected ID
+                    binding.emptyStateTextViewUserGPay.visibility = View.VISIBLE
                     binding.usersRecyclerView.visibility = View.GONE
                 } else {
-                    binding.emptyStateTextViewUserGPay.visibility = View.GONE // Corrected ID
+                    binding.emptyStateTextViewUserGPay.visibility = View.GONE
                     binding.usersRecyclerView.visibility = View.VISIBLE
                 }
                 buildAndSubmitDisplayList()
             }
 
             override fun onCancelled(error: DatabaseError) {
-                binding.progressBarUserGPay.visibility = View.GONE // Corrected ID
+                binding.progressBarUserGPay.visibility = View.GONE
                 Log.e(TAG, "Error fetching users: ${error.message}")
                 binding.emptyStateTextViewUserGPay.text = getString(R.string.failed_to_load_users)
-                binding.emptyStateTextViewUserGPay.visibility = View.VISIBLE // Corrected ID
+                binding.emptyStateTextViewUserGPay.visibility = View.VISIBLE
                 Toast.makeText(this@UserGPayTransactionsActivity, getString(R.string.failed_to_load_users), Toast.LENGTH_SHORT).show()
             }
         })
@@ -152,7 +139,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
     private fun fetchTransactionsForUser(userItem: ExpandableUserItem) {
         val userTransactionIdsRef = database.getReference("gpaybyUser").child(userItem.userName)
         val gpayRef = database.getReference("gpay")
-        val fetchedTransactions = mutableListOf<GPayTransactionFB>()
+        val fetchedTransactions = mutableListOf<GPayTransactionInfo>() // CHANGED TO GPayTransactionInfo
 
         userTransactionIdsRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -168,12 +155,15 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
                 transactionIds.forEach { transId ->
                     gpayRef.child(transId).addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(transSnapshot: DataSnapshot) {
-                            transSnapshot.getValue(GPayTransactionFB::class.java)?.let {
-                                fetchedTransactions.add(it.copy(transactionId = transSnapshot.key ?: it.transactionId)) // Ensure transactionId is set
+                            transSnapshot.getValue(GPayTransactionInfo::class.java)?.let { // CHANGED TO GPayTransactionInfo
+                                // Assuming GPayTransactionInfo has an 'id' field, if not, this needs adjustment or it comes from transSnapshot.key
+                                // For now, let's assume the 'id' field is correctly populated in GPayTransactionInfo
+                                fetchedTransactions.add(it)
                             }
                             transactionsToFetch--
                             if (transactionsToFetch == 0) {
-                                userItem.transactions = fetchedTransactions.sortedByDescending { it.originalDate.ifEmpty { it.date } } // Sort by date
+                                // Assuming GPayTransactionInfo has 'creationTime' or similar for sorting
+                                userItem.transactions = fetchedTransactions.sortedByDescending { it.creationTime }
                                 userItem.isLoadingTransactions = false
                                 buildAndSubmitDisplayList()
                             }
@@ -183,7 +173,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
                             transactionsToFetch--
                             Log.e(TAG, "Error fetching transaction $transId for ${userItem.userName}: ${error.message}")
                             if (transactionsToFetch == 0) {
-                                userItem.transactions = fetchedTransactions.sortedByDescending { it.originalDate.ifEmpty { it.date } }
+                                userItem.transactions = fetchedTransactions.sortedByDescending { it.creationTime }
                                 userItem.isLoadingTransactions = false
                                 buildAndSubmitDisplayList()
                             }
@@ -195,7 +185,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {
                 Log.e(TAG, "Error fetching transaction IDs for ${userItem.userName}: ${error.message}")
                 userItem.isLoadingTransactions = false
-                userItem.transactions = emptyList() // Mark as loaded but empty on error
+                userItem.transactions = emptyList()
                 buildAndSubmitDisplayList()
             }
         })
@@ -205,7 +195,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
     private fun buildAndSubmitDisplayList() {
         val displayList = mutableListOf<DisplayListItem>()
         if (usersDataList.isEmpty() && binding.progressBarUserGPay.visibility == View.GONE) {
-            // Handled by emptyStateTextViewUserGPay visibility already
+            // empty state handled by visibility changes in fetchUsers
         } else if (usersDataList.isNotEmpty()) {
             binding.usersRecyclerView.visibility = View.VISIBLE
             binding.emptyStateTextViewUserGPay.visibility = View.GONE
@@ -305,35 +295,33 @@ class ExpandableUserTransactionsAdapter(
         }
     }
 
-     class TransactionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val descriptionTextView: TextView = itemView.findViewById(R.id.transaction_fb_description_or_name) // CORRECTED ID
-        private val amountTextView: TextView = itemView.findViewById(R.id.transaction_fb_amount) // CORRECTED ID
-        private val dateTextView: TextView = itemView.findViewById(R.id.transaction_fb_date) // CORRECTED ID
-        private val typeIndicatorView: View = itemView.findViewById(R.id.transaction_fb_type_label) // CORRECTED ID
+    class TransactionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val descriptionTextView: TextView = itemView.findViewById(R.id.transaction_fb_description_or_name)
+        private val amountTextView: TextView = itemView.findViewById(R.id.transaction_fb_amount)
+        private val dateTextView: TextView = itemView.findViewById(R.id.transaction_fb_date)
+        private val typeIndicatorView: TextView = itemView.findViewById(R.id.transaction_fb_type_label) // This is a TextView
 
-        fun bind(transaction: GPayTransactionFB) {
-            descriptionTextView.text = transaction.originalDescription.ifEmpty { transaction.description }
-            val formattedAmount = transaction.amount
-            amountTextView.text = formattedAmount
-            dateTextView.text = transaction.originalDate.ifEmpty { transaction.date }
+        fun bind(transaction: GPayTransactionInfo) { // CHANGED TO GPayTransactionInfo
+            descriptionTextView.text = transaction.name // Use 'name' from GPayTransactionInfo
+            amountTextView.text = transaction.amount // Use 'amount' from GPayTransactionInfo
+            dateTextView.text = transaction.creationTime // Use 'creationTime' from GPayTransactionInfo
 
-            val colorRes = if (transaction.type.equals("DEBIT", ignoreCase = true)) R.color.red_dark else R.color.green_dark
-            typeIndicatorView.setBackgroundColor(ContextCompat.getColor(itemView.context, colorRes))
-            amountTextView.setTextColor(ContextCompat.getColor(itemView.context, colorRes))
+            typeIndicatorView.text = "CREDIT" // Always show CREDIT
+            // REMOVED: typeIndicatorView.setBackgroundColor(...)
+            amountTextView.setTextColor(ContextCompat.getColor(itemView.context, R.color.green_dark)) // Always green
         }
     }
-    
+
     class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        // private val progressBar: ProgressBar = itemView.findViewById(R.id.itemProgressBar) // Not strictly needed for binding if layout is just a PB
         fun bind(item: DisplayListItem.LoadingTransactionsItem) {
-            // Optional: set a message if your loading item has a TextView
+            // Optional
         }
     }
-    
+
     class NoTransactionsViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val messageTextView: TextView = itemView.findViewById(R.id.noTransactionsMessageTextView)
         fun bind(item: DisplayListItem.NoTransactionsItem) {
-             messageTextView.text = itemView.context.getString(R.string.no_transactions_for_user, item.userName)
+            messageTextView.text = itemView.context.getString(R.string.no_transactions_for_user, item.userName)
         }
     }
 }
@@ -344,6 +332,6 @@ class DisplayListItemDiffCallback : DiffUtil.ItemCallback<DisplayListItem>() {
     }
 
     override fun areContentsTheSame(oldItem: DisplayListItem, newItem: DisplayListItem): Boolean {
-        return oldItem == newItem 
+        return oldItem == newItem
     }
 }

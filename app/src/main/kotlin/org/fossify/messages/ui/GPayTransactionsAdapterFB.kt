@@ -101,7 +101,7 @@ class GPayTransactionsAdapterFB(initialTransactions: List<GPayTransactionInfo>) 
                 transactionHolder.amountTextView.text = gpayTransaction.amount
                 transactionHolder.paymentFeeTextView.text = gpayTransaction.paymentFee
                 transactionHolder.paymentSourceTextView.text = gpayTransaction.paymentSource
-                transactionHolder.typeTextView.text = gpayTransaction.type
+//                transactionHolder.typeTextView.text = gpayTransaction.type
                 transactionHolder.updateTimeTextView.text = gpayTransaction.updateTime
                 transactionHolder.notesTextView.text = if(gpayTransaction.notes.isNullOrEmpty()) "-" else gpayTransaction.notes
 
