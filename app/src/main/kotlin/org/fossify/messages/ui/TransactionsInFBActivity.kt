@@ -30,6 +30,7 @@ import org.fossify.messages.BuildConfig // Replace org.fossify.messages with you
 import org.fossify.messages.activities.GPayTransactionsInFBActivity
 import org.fossify.messages.activities.MainActivity
 import org.fossify.messages.activities.SimpleActivity
+import org.fossify.messages.activities.UserGPayTransactionsActivity
 import org.fossify.messages.helpers.FirebaseConstants
 import org.fossify.messages.models.TransactionInfo
 import java.time.LocalDate
@@ -418,6 +419,10 @@ class TransactionsInFBActivity : SimpleActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_user_transactions -> { // Added case for user transactions
+                startActivity(Intent(this, UserGPayTransactionsActivity::class.java))
+                true
+            }
             R.id.menu_sms, R.id.menu_transaction -> { // not applicable for fbOnly flavor
                 // For simplicity, let's assume these take you to TransactionActivity
                 // which can then decide to load SMS or local transactions.

@@ -1,51 +1,54 @@
 package org.fossify.messages.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu // Added import
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.ProgressBar // Keep this, it's used by the activity
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat // Added for color
+import androidx.appcompat.app.AppCompatActivity // Keeping AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
+import org.fossify.messages.BuildConfig
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ActivityUserGpayTransactionsBinding
-import org.fossify.messages.models.GPayTransactionInfo // IMPORTING THE CORRECT MODEL
-
-// GPayTransactionFB data class REMOVED
+import org.fossify.messages.models.GPayTransactionInfo
+import org.fossify.messages.ui.TransactionActivity
+import org.fossify.messages.ui.TransactionsInFBActivity
 
 data class ExpandableUserItem(
     val userName: String,
     var isExpanded: Boolean = false,
-    var transactions: List<GPayTransactionInfo>? = null, // CHANGED TO GPayTransactionInfo
+    var transactions: List<GPayTransactionInfo>? = null,
     var isLoadingTransactions: Boolean = false
 )
 
 sealed class DisplayListItem {
     data class UserHeaderItem(val userItem: ExpandableUserItem) : DisplayListItem()
-    data class TransactionRowItem(val transaction: GPayTransactionInfo) : DisplayListItem() // CHANGED TO GPayTransactionInfo
+    data class TransactionRowItem(val transaction: GPayTransactionInfo) : DisplayListItem()
     data class LoadingTransactionsItem(val userName: String) : DisplayListItem()
     data class NoTransactionsItem(val userName: String) : DisplayListItem()
 
     open val id: String get() = when (this) {
         is UserHeaderItem -> "user_${userItem.userName}"
-        is TransactionRowItem -> "txn_${transaction.id}" // Assuming GPayTransactionInfo has an 'id' field
+        is TransactionRowItem -> "txn_${transaction.id}"
         is LoadingTransactionsItem -> "loading_$userName"
         is NoTransactionsItem -> "no_txn_$userName"
     }
 }
 
 
-class UserGPayTransactionsActivity : AppCompatActivity() {
+class UserGPayTransactionsActivity : AppCompatActivity() { // Stays AppCompatActivity
 
     private lateinit var binding: ActivityUserGpayTransactionsBinding
     private lateinit var database: FirebaseDatabase
@@ -63,6 +66,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbarUserGPayTransactions)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        // Assuming R.string.user_gpay_transactions_title is defined for the title
         supportActionBar?.title = getString(R.string.user_gpay_transactions_title)
 
         database = FirebaseDatabase.getInstance()
@@ -139,7 +143,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
     private fun fetchTransactionsForUser(userItem: ExpandableUserItem) {
         val userTransactionIdsRef = database.getReference("gpaybyUser").child(userItem.userName)
         val gpayRef = database.getReference("gpay")
-        val fetchedTransactions = mutableListOf<GPayTransactionInfo>() // CHANGED TO GPayTransactionInfo
+        val fetchedTransactions = mutableListOf<GPayTransactionInfo>()
 
         userTransactionIdsRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -155,14 +159,11 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
                 transactionIds.forEach { transId ->
                     gpayRef.child(transId).addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(transSnapshot: DataSnapshot) {
-                            transSnapshot.getValue(GPayTransactionInfo::class.java)?.let { // CHANGED TO GPayTransactionInfo
-                                // Assuming GPayTransactionInfo has an 'id' field, if not, this needs adjustment or it comes from transSnapshot.key
-                                // For now, let's assume the 'id' field is correctly populated in GPayTransactionInfo
+                            transSnapshot.getValue(GPayTransactionInfo::class.java)?.let {
                                 fetchedTransactions.add(it)
                             }
                             transactionsToFetch--
                             if (transactionsToFetch == 0) {
-                                // Assuming GPayTransactionInfo has 'creationTime' or similar for sorting
                                 userItem.transactions = fetchedTransactions.sortedByDescending { it.creationTime }
                                 userItem.isLoadingTransactions = false
                                 buildAndSubmitDisplayList()
@@ -173,7 +174,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
                             transactionsToFetch--
                             Log.e(TAG, "Error fetching transaction $transId for ${userItem.userName}: ${error.message}")
                             if (transactionsToFetch == 0) {
-                                userItem.transactions = fetchedTransactions.sortedByDescending { it.creationTime }
+                                userItem.transactions = fetchedTransactions.sortedByDescending { it.creationTime } // Potentially sort what was fetched
                                 userItem.isLoadingTransactions = false
                                 buildAndSubmitDisplayList()
                             }
@@ -185,7 +186,7 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {
                 Log.e(TAG, "Error fetching transaction IDs for ${userItem.userName}: ${error.message}")
                 userItem.isLoadingTransactions = false
-                userItem.transactions = emptyList()
+                userItem.transactions = emptyList() // Ensure transactions are cleared on error
                 buildAndSubmitDisplayList()
             }
         })
@@ -222,12 +223,50 @@ class UserGPayTransactionsActivity : AppCompatActivity() {
         expandableAdapter.submitList(displayList)
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        if (BuildConfig.FLAVOR == "fbTransactionsOnly") {
+            menuInflater.inflate(R.menu.menu_transactions_fb, menu)
+            return true
+        } else {
+            menuInflater.inflate(R.menu.menu_main, menu)
+            return true
+        }
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_show_fb_transactions -> {
+                startActivity(Intent(this, TransactionsInFBActivity::class.java))
+                finish()
+                true
+            }
+            R.id.menu_sms, R.id.menu_transaction -> {
+                startActivity(Intent(this, TransactionActivity::class.java))
+                finish()
+                true
+            }
+            R.id.menu_conversations -> {
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
+                true
+            }
+            R.id.action_open_gpay_transactions_fb -> {
+                startActivity(Intent(this, GPayTransactionsInFBActivity::class.java))
+                finish()
+                true
+            }
+            // R.id.action_user_transactions -> { // Duplicate case for user transactions removed
+            //     startActivity(Intent(this, UserGPayTransactionsActivity::class.java))
+            //     true
+            // }
             android.R.id.home -> {
                 onBackPressedDispatcher.onBackPressed()
                 true
             }
+//            R.id.action_upload_gpay_csv -> {
+//                openCsvFilePicker()
+//                true
+//            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -299,22 +338,20 @@ class ExpandableUserTransactionsAdapter(
         private val descriptionTextView: TextView = itemView.findViewById(R.id.transaction_fb_description_or_name)
         private val amountTextView: TextView = itemView.findViewById(R.id.transaction_fb_amount)
         private val dateTextView: TextView = itemView.findViewById(R.id.transaction_fb_date)
-        private val typeIndicatorView: TextView = itemView.findViewById(R.id.transaction_fb_type_label) // This is a TextView
+        private val typeIndicatorView: TextView = itemView.findViewById(R.id.transaction_fb_type_label)
 
-        fun bind(transaction: GPayTransactionInfo) { // CHANGED TO GPayTransactionInfo
-            descriptionTextView.text = transaction.name // Use 'name' from GPayTransactionInfo
-            amountTextView.text = transaction.amount // Use 'amount' from GPayTransactionInfo
-            dateTextView.text = transaction.creationTime // Use 'creationTime' from GPayTransactionInfo
-
-            typeIndicatorView.text = "CREDIT" // Always show CREDIT
-            // REMOVED: typeIndicatorView.setBackgroundColor(...)
-            amountTextView.setTextColor(ContextCompat.getColor(itemView.context, R.color.green_dark)) // Always green
+        fun bind(transaction: GPayTransactionInfo) {
+            descriptionTextView.text = transaction.name
+            amountTextView.text = transaction.amount
+            dateTextView.text = transaction.creationTime
+            typeIndicatorView.text = "CREDIT"
+            amountTextView.setTextColor(ContextCompat.getColor(itemView.context, R.color.green_dark))
         }
     }
 
     class LoadingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         fun bind(item: DisplayListItem.LoadingTransactionsItem) {
-            // Optional
+            // Optional: You can set a message or animate the progress bar if needed
         }
     }
 

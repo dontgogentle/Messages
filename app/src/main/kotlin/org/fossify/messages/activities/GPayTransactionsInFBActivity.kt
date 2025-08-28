@@ -30,6 +30,7 @@ import org.fossify.messages.databinding.ActivityGpayTransactionsInFbBinding
 import org.fossify.messages.models.GPayTransactionInfo // Added import
 import org.fossify.messages.ui.GPayTransactionsAdapterFB
 import org.fossify.messages.ui.TransactionActivity
+import org.fossify.messages.ui.TransactionsInFBActivity
 import java.io.BufferedReader
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -140,6 +141,14 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                 finish()
                 true
             }
+
+            R.id.action_show_fb_transactions -> {
+                startActivity(Intent(this, TransactionsInFBActivity::class.java))
+                finish()
+                true
+            }
+
+
             // R.id.action_user_transactions -> { // Duplicate case for user transactions removed
             //     startActivity(Intent(this, UserGPayTransactionsActivity::class.java))
             //     true
