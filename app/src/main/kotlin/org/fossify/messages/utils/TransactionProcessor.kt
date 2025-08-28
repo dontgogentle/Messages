@@ -5,7 +5,7 @@ import android.util.Log
 import com.google.firebase.database.FirebaseDatabase
 import org.fossify.messages.helpers.FirebaseConstants // Added import
 import org.fossify.messages.models.Message
-import org.fossify.messages.ui.TransactionInfo // Ensure this is the correct TransactionInfo
+import org.fossify.messages.models.TransactionInfo // Ensure this is the correct TransactionInfo
 import java.util.UUID
 import java.security.MessageDigest
 

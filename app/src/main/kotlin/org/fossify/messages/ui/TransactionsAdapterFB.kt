@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import org.fossify.commons.extensions.formatDateOrTime
 import org.fossify.messages.R
 import org.fossify.messages.activities.SimpleActivity
-import org.fossify.messages.ui.TransactionInfo // Ensure this is the correct import
+import org.fossify.messages.models.TransactionInfo // Ensure this is the correct import
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date

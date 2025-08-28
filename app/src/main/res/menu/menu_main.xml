@@ -41,6 +41,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_user_transactions"
+        android:title="@string/user_gpay_transactions"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_upload_gpay_csv"
         android:title="@string/upload_gpay_csv"
         android:icon="@android:drawable/ic_menu_upload"

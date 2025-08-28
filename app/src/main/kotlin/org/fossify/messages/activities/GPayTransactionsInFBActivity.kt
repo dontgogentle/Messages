@@ -1,10 +1,8 @@
-package org.fossify.messages.ui
+package org.fossify.messages.activities
 
 import android.Manifest
-import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -21,37 +19,28 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.database.*
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import org.fossify.messages.BuildConfig
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ActivityGpayTransactionsInFbBinding
-import java.text.SimpleDateFormat
-import java.util.Locale
-import org.fossify.messages.BuildConfig
-import org.fossify.messages.activities.MainActivity
+import org.fossify.messages.models.GPayTransactionInfo // Added import
+import org.fossify.messages.ui.GPayTransactionsAdapterFB
+import org.fossify.messages.ui.TransactionActivity
 import java.io.BufferedReader
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 private const val REQUEST_CODE_READ_STORAGE = 1001
 
-// Define a data class for GPay Transactions based on CSV fields
-data class GPayTransactionInfo(
-    val id: String = "", // Transaction ID
-    val name: String = "", // Name
-    val paymentSource: String = "", // Payment Source
-    val type: String = "UPI", // Type (defaulted to UPI as per CSV)
-    val creationTime: String = "", // creation time string from CSV (e.g., "21-07-2025 17:35:44")
-    val amount: String = "", // Amount
-    val paymentFee: String = "", // Payment Fee
-    val netAmount: String = "", // Net Amount
-    val status: String = "", // Status
-    val updateTime: String = "", // Update time
-    val notes: String = "", // Notes
-    val creationTimestamp: Int = 0 // Parsed timestamp from creationTime string
-)
-
+// GPayTransactionInfo data class moved to org.fossify.messages.models.GPayTransactionInfo
 
 class GPayTransactionsInFBActivity : AppCompatActivity() {
 
@@ -70,7 +59,7 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private val openCsvLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == RESULT_OK) {
             result.data?.data?.also { uri ->
                 Log.d(TAG, "CSV file selected: $uri")
                 try {
@@ -132,6 +121,10 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_user_transactions -> { // Added case for user transactions
+                startActivity(Intent(this, UserGPayTransactionsActivity::class.java))
+                true
+            }
             R.id.menu_sms, R.id.menu_transaction -> {
                 startActivity(Intent(this, TransactionActivity::class.java))
                 finish()
@@ -147,6 +140,10 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                 finish()
                 true
             }
+            // R.id.action_user_transactions -> { // Duplicate case for user transactions removed
+            //     startActivity(Intent(this, UserGPayTransactionsActivity::class.java))
+            //     true
+            // }
             android.R.id.home -> {
                 onBackPressedDispatcher.onBackPressed()
                 true
@@ -214,10 +211,6 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
         adapter = GPayTransactionsAdapterFB(emptyList())
         transactionsRecyclerView.adapter = adapter
     }
-
-    private val firebaseDateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
-    private val displayDateTimeFormatter = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.ENGLISH)
-
 
     private fun parseGPayTransactionNode(transactionNode: DataSnapshot): GPayTransactionInfo? {
         val id = transactionNode.key ?: return null
@@ -302,13 +295,13 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                 description = descriptionText
             }
             val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
 
     private fun getNextNotificationId(): Int {
-        val prefs = getSharedPreferences(NOTIFICATION_ID_PREFS, Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences(NOTIFICATION_ID_PREFS, MODE_PRIVATE)
         val lastId = prefs.getInt(LAST_NOTIFICATION_ID_KEY, 0)
         val nextId = lastId + 1
         prefs.edit().putInt(LAST_NOTIFICATION_ID_KEY, nextId).apply()
@@ -325,7 +318,9 @@ class GPayTransactionsInFBActivity : AppCompatActivity() {
                         try {
                             val creationTimeString = parts[3].trim()
                             val parsedDate = csvDateTimeFormatter.parse(creationTimeString)
-                            val intTimestamp = parsedDate?.let { compactFormatter.format(it).toInt() } ?: 0
+//                            val intTimestamp = parsedDate?.let { compactFormatter.format(it).toInt() } ?: 0
+                            val intTimestamp = parsedDate?.time?.div(1000)?.toInt() ?: 0
+
 
                             val transaction = GPayTransactionInfo(
                                 name = parts[0].trim(),

@@ -19,7 +19,7 @@ import org.fossify.messages.helpers.FirebaseSyncState
 import org.fossify.messages.helpers.ReceiverUtils.isMessageFilteredOut
 import org.fossify.messages.helpers.refreshMessages
 import org.fossify.messages.models.Message
-import org.fossify.messages.ui.TransactionInfo
+import org.fossify.messages.models.TransactionInfo
 import org.fossify.messages.utils.TransactionProcessor
 
 class SmsReceiver : BroadcastReceiver() {

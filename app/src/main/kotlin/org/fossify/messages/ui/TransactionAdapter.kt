@@ -10,6 +10,7 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import org.fossify.messages.R
+import org.fossify.messages.models.TransactionInfo
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

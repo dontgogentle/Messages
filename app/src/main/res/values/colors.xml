@@ -34,4 +34,7 @@
     <color name="bright_header_border_color">#FF00FF</color> <!-- Default Teal -->
     <color name="dark_purple_text">#800080</color>
 
+    <color name="red_dark">#D32F2F</color> <!-- Standard Dark Red -->
+    <color name="green_dark">#388E3C</color> <!-- Standard Dark Green -->
+
 </resources>

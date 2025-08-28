@@ -7,6 +7,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import org.fossify.messages.R
+import org.fossify.messages.models.GPayTransactionInfo
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
@@ -41,7 +42,7 @@ class GPayTransactionsAdapterFB(initialTransactions: List<GPayTransactionInfo>) 
         val netAmountTextView: TextView = itemView.findViewById(R.id.gpay_transaction_fb_net_amount)
         val creationTimeTextView: TextView = itemView.findViewById(R.id.gpay_transaction_fb_creation_time)
         val statusTextView: TextView = itemView.findViewById(R.id.gpay_transaction_fb_status)
-        
+
         // Detail fields
         val detailsLayout: LinearLayout = itemView.findViewById(R.id.gpay_transaction_fb_details_layout)
         val idTextView: TextView = itemView.findViewById(R.id.gpay_transaction_fb_id)
@@ -77,7 +78,7 @@ class GPayTransactionsAdapterFB(initialTransactions: List<GPayTransactionInfo>) 
                 // If not, you might need to create one or use a simpler TextView programmatically.
                 // For now, assuming R.layout.item_date_header_fb exists and has R.id.date_header_text_fb
                 val view = LayoutInflater.from(parent.context)
-                    .inflate(R.layout.item_date_header_fb, parent, false) 
+                    .inflate(R.layout.item_date_header_fb, parent, false)
                 GPayDateHeaderViewHolder(view)
             }
             else -> throw IllegalArgumentException("Invalid view type: $viewType for GPayAdapter")
@@ -103,14 +104,14 @@ class GPayTransactionsAdapterFB(initialTransactions: List<GPayTransactionInfo>) 
                 transactionHolder.typeTextView.text = gpayTransaction.type
                 transactionHolder.updateTimeTextView.text = gpayTransaction.updateTime
                 transactionHolder.notesTextView.text = if(gpayTransaction.notes.isNullOrEmpty()) "-" else gpayTransaction.notes
-                
+
                 // Handle click to expand/collapse details
                 transactionHolder.itemView.setOnClickListener {
                     val isVisible = transactionHolder.detailsLayout.visibility == View.VISIBLE
                     transactionHolder.detailsLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
                 }
                 // Ensure details are hidden by default when view is recycled
-                transactionHolder.detailsLayout.visibility = View.GONE 
+                transactionHolder.detailsLayout.visibility = View.GONE
 
             }
             is GPayAdapterItemFB.GPayDateHeaderItem -> {

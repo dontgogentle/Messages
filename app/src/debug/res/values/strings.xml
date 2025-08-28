@@ -4,4 +4,9 @@
     <string name="channel_name_transactions">New Transactions</string>
     <string name="channel_description_transactions">Notifications for new transactions received
     </string>
+    <string name="user_gpay_transactions_title">User GPay Transactions</string>
+    <string name="no_users_found">No users found with GPay transactions.</string>
+    <string name="failed_to_load_users">Failed to load users.</string>
+    <string name="no_transactions_for_user">No transactions found for %s.</string>
+    <string name="loading_transactions">Loading transactions...</string>
 </resources>

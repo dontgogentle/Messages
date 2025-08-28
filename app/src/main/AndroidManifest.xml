@@ -47,10 +47,16 @@
         </activity>
 
         <activity
-            android:name=".ui.GPayTransactionsInFBActivity"
+            android:name=".activities.GPayTransactionsInFBActivity"
             android:exported="false" 
             android:label="@string/gpay_transactions_in_fb"
             android:parentActivityName=".activities.MainActivity" />
+
+        <activity
+            android:name=".activities.UserGPayTransactionsActivity"
+            android:exported="false"
+            android:label="User GPay Transactions"
+            android:parentActivityName=".activities.GPayTransactionsInFBActivity" />
 
         <activity
             android:name=".ui.TransactionActivity"

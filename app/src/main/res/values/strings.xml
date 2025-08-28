@@ -155,6 +155,14 @@
     <string name="channel_description_gpay_transactions">Notifications for new GPay transactions synced from CSV</string>
     <string name="upload_gpay_csv">Upload GPay CSV</string>
     <string name="clear_all_gpay_data_fb">Clear All GPay Data (FB)</string>
+    <string name="user_gpay_transactions">User Transactions(gpay)</string>
+
+    <!-- User GPay Transactions Activity specific -->
+    <string name="user_gpay_transactions_title">User GPay Transactions</string>
+    <string name="no_users_found">No users found with GPay transactions.</string>
+    <string name="failed_to_load_users">Failed to load users.</string>
+    <string name="no_transactions_for_user">No transactions found for %s.</string>
+    <string name="loading_transactions">Loading transactions...</string>
 
     <!--
         Haven't found some strings? There's more at

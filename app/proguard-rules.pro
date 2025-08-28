@@ -35,17 +35,36 @@
 -keep class org.fossify.messages.models.MessageAttachment { *; }
 
     # Assuming your TransactionInfo class is at org.fossify.messages.models.TransactionInfo
-    -keep class org.fossify.messages.ui.TransactionInfo { *; }
-    -keepnames class org.fossify.messages.ui.TransactionInfo { *; }
+    -keep class org.fossify.messages.models.TransactionInfo { *; }
+    -keepnames class org.fossify.messages.models.TransactionInfo { *; }
 
     # More specific: keep all fields in TransactionInfo
-    -keepclassmembers class org.fossify.messages.ui.TransactionInfo {
+    -keepclassmembers class org.fossify.messages.models.TransactionInfo {
         public <fields>;
         # If you have methods that Firebase might call (like getters/setters if not a data class)
         # public <methods>;
     }
 
     # If Firebase needs a no-argument constructor
-    -keepclassmembers class org.fossify.messages.ui.TransactionInfo {
+    -keepclassmembers class org.fossify.messages.models.TransactionInfo {
         public <init>();
     }
+
+# Keep the entire class and all its members
+-keep class org.fossify.messages.models.GPayTransactionInfo { *; }
+-keepnames class org.fossify.messages.models.GPayTransactionInfo { *; }
+
+# Preserve all public fields (for Firebase, Gson, etc.)
+-keepclassmembers class org.fossify.messages.models.GPayTransactionInfo {
+    public <fields>;
+}
+
+# Preserve public methods (getters/setters, if applicable)
+-keepclassmembers class org.fossify.messages.models.GPayTransactionInfo {
+    public <methods>;
+}
+
+# Preserve no-argument constructor (required by Firebase)
+-keepclassmembers class org.fossify.messages.models.GPayTransactionInfo {
+    public <init>();
+}

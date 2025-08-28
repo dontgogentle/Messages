@@ -6,10 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
-import android.os.Parcelable
-import android.provider.Telephony
+// import android.net.Uri // Commented out as loadTransactions is disabled
+// import android.os.Bundle // Already imported by AppCompatActivity
+// import android.os.Parcelable // Moved to TransactionInfo.kt
+// import android.provider.Telephony // Commented out as loadTransactions is disabled
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -21,28 +22,13 @@ import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kotlinx.parcelize.Parcelize
+// import kotlinx.parcelize.Parcelize // Moved to TransactionInfo.kt
 import org.fossify.messages.R
 import org.fossify.messages.activities.MainActivity
-import org.fossify.messages.utils.TransactionProcessor // Import TransactionProcessor
+import org.fossify.messages.models.TransactionInfo // Added import
+// import org.fossify.messages.utils.TransactionProcessor // Import TransactionProcessor - already imported
 
-@Parcelize
-data class TransactionInfo(
-    var id: String? = null,
-    var strDateInMessage: String? = "", // For "dd-MMM-yy" string from SMS, was 'date'
-    var date: Int,             // For epoch timestamp
-    val account: String = "",
-    val transactionType: String = "", // "CREDIT" or "DEBIT"
-    val amount: String = "",
-    val transactionReference: String = "",
-    val raw: String = "",
-    val upi: String? = null, // Not all transactions have UPI
-    val name: String? = null, // For "Received From" or "Transferred To"
-    val accountBalance: String? = null,
-    val receivedFrom: String? = null,
-    val transferredTo: String? = null,
-    var isRawExpanded: Boolean = false // Added for collapsible raw message
-) : Parcelable
+// TransactionInfo data class moved to org.fossify.messages.models.TransactionInfo
 
 class TransactionActivity : AppCompatActivity() {
 

@@ -84,7 +84,7 @@ import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
 import org.fossify.messages.models.Message
 import org.fossify.messages.models.SearchResult
-import org.fossify.messages.ui.TransactionInfo
+import org.fossify.messages.models.TransactionInfo
 import org.fossify.messages.ui.TransactionActivity
 import org.fossify.messages.ui.TransactionsInFBActivity
 import org.greenrobot.eventbus.EventBus
