@@ -193,6 +193,12 @@
             android:label="Room Details" 
             android:parentActivityName=".activities.MainActivity" /> <!-- Set appropriate parent -->
 
+        <activity
+            android:name=".activities.UserBillsActivity"
+            android:exported="false"
+            android:label="User Bills" 
+            android:parentActivityName=".activities.SiteRoomDetailsActivity" />
+
 
         <service
             android:name=".services.HeadlessSmsSendService"

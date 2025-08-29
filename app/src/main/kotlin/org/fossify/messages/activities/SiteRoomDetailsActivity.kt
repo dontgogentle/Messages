@@ -35,7 +35,7 @@ class SiteRoomDetailsActivity : AppCompatActivity() {
 
         currentSite = Config(this).selectedSiteName
 
-        setupToolbar()
+        // setupToolbar() // Removed as toolbar itself was removed for space
         setupSiteAbbreviation()
         setupRecyclerView()
         setupSearch()
@@ -43,9 +43,9 @@ class SiteRoomDetailsActivity : AppCompatActivity() {
         fetchInmates()
     }
 
-    private fun setupToolbar() {
-        // No title to be set on the toolbar itself
-    }
+    // private fun setupToolbar() {
+    //     // No title to be set on the toolbar itself
+    // }
 
     private fun getSiteAbbreviation(siteName: String): String {
         if (siteName.length <= 2) {
@@ -66,24 +66,20 @@ class SiteRoomDetailsActivity : AppCompatActivity() {
         val abbreviation = getSiteAbbreviation(currentSite)
         binding.siteAbbreviationTextView.text = abbreviation
 
-        // Dynamic background and text color for contrast
-        // Using a fixed background color for simplicity, e.g., theme's primary color
-        // You might want to fetch this from your theme (R.attr.colorPrimary)
-        val backgroundColor = Color.parseColor("#FF6200EE") // Example: Purple, replace with your theme color
+        val backgroundColor = Color.parseColor("#FF6200EE") 
         binding.siteAbbreviationTextView.setBackgroundColor(backgroundColor)
 
-        // Set text color for contrast
         val textColor = if (ColorUtils.calculateLuminance(backgroundColor) < 0.5) {
-            Color.WHITE // Dark background, light text
+            Color.WHITE
         } else {
-            Color.BLACK // Light background, dark text
+            Color.BLACK
         }
         binding.siteAbbreviationTextView.setTextColor(textColor)
     }
 
 
     private fun setupRecyclerView() {
-        inmateAdapter = InmateAdapter()
+        inmateAdapter = InmateAdapter(currentSite) // Pass currentSite here
         binding.inmatesRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@SiteRoomDetailsActivity)
             adapter = inmateAdapter
@@ -101,33 +97,29 @@ class SiteRoomDetailsActivity : AppCompatActivity() {
     }
 
     private fun fetchInmates() {
-        // Ensure toolbar title is set - REMOVED as title is removed from toolbar
-
-        val databasePath = "$currentSite/AccIndexes/active" // Fetch all rooms
+        val databasePath = "$currentSite/AccIndexes/active" 
         val database = FirebaseDatabase.getInstance().getReference(databasePath)
 
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 allDisplayItems.clear()
-                for (roomSnapshot in snapshot.children) { // Iterates through each room (e.g., A1, A2)
+                for (roomSnapshot in snapshot.children) { 
                     val roomKey = roomSnapshot.key
                     if (roomKey != null) {
                         allDisplayItems.add(RoomHeader(roomKey))
-                        // Children of roomSnapshot are directly the inmates (userKey -> userInfo)
-                        for (inmateSnapshot in roomSnapshot.children) { // Iterates through each inmate under the current room
+                        for (inmateSnapshot in roomSnapshot.children) { 
                             val inmate = inmateSnapshot.getValue(Inmate::class.java)
                             inmate?.let {
-                                val inmateWithId = it.copy(id = inmateSnapshot.key ?: "") // The key of inmateSnapshot is the user ID
+                                val inmateWithId = it.copy(id = inmateSnapshot.key ?: "") 
                                 allDisplayItems.add(inmateWithId)
                             }
                         }
                     }
                 }
-                filterInmates(binding.searchEditText.text.toString()) // Apply current filter
+                filterInmates(binding.searchEditText.text.toString()) 
             }
 
             override fun onCancelled(error: DatabaseError) {
-                // Handle error
                 // Log.e("SiteRoomDetailsActivity", "Firebase error: ${error.message}")
             }
         })
@@ -150,10 +142,9 @@ class SiteRoomDetailsActivity : AppCompatActivity() {
             filteredDisplayItems.addAll(allDisplayItems)
         } else {
             val lowerCaseQuery = query.lowercase(Locale.getDefault())
-            val headersToAdd = mutableSetOf<RoomHeader>() // Keep track of headers to add
-            val itemsToAdd = mutableListOf<RoomDisplayItem>() // All items that match or whose headers match
+            val headersToAdd = mutableSetOf<RoomHeader>() 
+            val itemsToAdd = mutableListOf<RoomDisplayItem>() 
 
-            // First pass: identify all matching inmates and their headers
             for (item in allDisplayItems) {
                 if (item is Inmate && item.name.lowercase(Locale.getDefault()).contains(lowerCaseQuery)) {
                     itemsToAdd.add(item)
@@ -161,46 +152,33 @@ class SiteRoomDetailsActivity : AppCompatActivity() {
                 }
             }
 
-            // Second pass: identify all matching headers
             for (item in allDisplayItems) {
                 if (item is RoomHeader && item.roomNumber.lowercase(Locale.getDefault()).contains(lowerCaseQuery)) {
                     headersToAdd.add(item)
                 }
             }
 
-            // Build the filtered list: add headers first, then inmates under their respective headers
             for (header in allDisplayItems.filterIsInstance<RoomHeader>()) {
                 if (headersToAdd.contains(header)) {
                     if (!filteredDisplayItems.contains(header)) {
                         filteredDisplayItems.add(header)
                     }
-                    // Add inmates that belong to this header and are in itemsToAdd
                     val headerIndexInAll = allDisplayItems.indexOf(header)
                     for (i in headerIndexInAll + 1 until allDisplayItems.size) {
                         val potentialInmate = allDisplayItems[i]
-                        if (potentialInmate is RoomHeader) break // Next header
+                        if (potentialInmate is RoomHeader) break 
                         if (potentialInmate in itemsToAdd && !filteredDisplayItems.contains(potentialInmate)) {
                             filteredDisplayItems.add(potentialInmate)
                         }
                     }
                 }
             }
-            // Add any matching inmates whose headers didn't match directly but were added because of the inmate
             for (item in itemsToAdd) {
                 if (!filteredDisplayItems.contains(item)) {
-                    // This case might be tricky if an inmate matches but its header doesn't.
-                    // The current logic ensures header is added if its inmate matches.
-                    // This explicit add might be redundant or could be refined based on exact desired behavior for orphaned items.
-                    // For now, if an inmate is in itemsToAdd, its header is in headersToAdd, and both should be added by the loop above.
+                    // This case might be tricky
                 }
             }
         }
         inmateAdapter.submitList(filteredDisplayItems.toList())
     }
-
-    // Optional: Handle back navigation if you enabled it in the toolbar
-    // override fun onSupportNavigateUp(): Boolean {
-    //     onBackPressedDispatcher.onBackPressed()
-    //     return true
-    // }
 }

@@ -1,18 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/textViewInmateName"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        tools:text="Inmate Name" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/textViewInmateName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            tools:text="Inmate Name" />
+
+        <ImageView
+            android:id="@+id/imageViewBillsIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_menu_agenda"
+            app:tint="?android:attr/textColorSecondary"
+            android:contentDescription="View Bills"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+            <!-- Use a more appropriate icon later -->
+            <!-- tint allows the icon to adapt to light/dark themes, remove if your icon has its own colors -->
+    </LinearLayout>
 
     <TextView
         android:id="@+id/textViewInmateDoj"
@@ -34,5 +55,11 @@
         android:layout_height="wrap_content"
         android:textSize="14sp"
         tools:text="Rent: $500" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:layout_marginTop="8dp"
+        android:background="#FFFF00" />
 
 </LinearLayout>

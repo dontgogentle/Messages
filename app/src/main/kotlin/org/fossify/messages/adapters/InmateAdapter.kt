@@ -17,8 +17,9 @@ import org.fossify.messages.models.RoomHeader
 import android.graphics.Typeface
 import android.util.Log
 import android.widget.Toast
+// import org.fossify.messages.activities.UserBillsActivity // Ensure this import is active or added by IDE
 
-class InmateAdapter : ListAdapter<RoomDisplayItem, RecyclerView.ViewHolder>(RoomDisplayItemDiffCallback()) {
+class InmateAdapter(private val currentSite: String) : ListAdapter<RoomDisplayItem, RecyclerView.ViewHolder>(RoomDisplayItemDiffCallback()) {
 
     companion object {
         private const val VIEW_TYPE_HEADER = 0
@@ -80,7 +81,6 @@ class InmateAdapter : ListAdapter<RoomDisplayItem, RecyclerView.ViewHolder>(Room
                 } else {
                     binding.root.setBackgroundColor(Color.TRANSPARENT) // Default if color is not present
                     // Reset to default text colors if no background color
-                    // Assuming default colors are handled by the theme or XML definitions
                     binding.textViewInmateName.setTextColor(getDefaultTextColor(binding.textViewInmateName.context))
                     binding.textViewInmateDoj.setTextColor(getDefaultTextColor(binding.textViewInmateDoj.context))
                     binding.textViewInmatePhone.setTextColor(getDefaultTextColor(binding.textViewInmatePhone.context))
@@ -98,8 +98,6 @@ class InmateAdapter : ListAdapter<RoomDisplayItem, RecyclerView.ViewHolder>(Room
             binding.textViewInmatePhone.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f) // Increased font size
             binding.textViewInmatePhone.setTypeface(null, Typeface.BOLD) // Bold text
 
-
-
             // Set OnClickListener for the phone number
             binding.textViewInmatePhone.setOnClickListener {
                 val context = it.context
@@ -112,10 +110,20 @@ class InmateAdapter : ListAdapter<RoomDisplayItem, RecyclerView.ViewHolder>(Room
                     if (intent.resolveActivity(context.packageManager) != null) {
                         context.startActivity(intent)
                     } else {
-                        // Optionally, show a Toast or log if no dialer app is available
                          Toast.makeText(context, "No app to handle this action", Toast.LENGTH_SHORT).show()
                     }
                 }
+            }
+
+            // Set OnClickListener for the bills icon
+            binding.imageViewBillsIcon.setOnClickListener {
+                val context = it.context
+                val intent = Intent(context, org.fossify.messages.activities.UserBillsActivity::class.java).apply {
+                    putExtra("USER_ID", inmate.id)
+                    putExtra("SITE_NAME", currentSite) // currentSite is from the adapter's constructor
+                    putExtra("INMATE_NAME", inmate.name) // Added this line
+                }
+                context.startActivity(intent)
             }
         }
 
