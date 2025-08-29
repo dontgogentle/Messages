@@ -402,9 +402,11 @@ class TransactionsInFBActivity : SimpleActivity() {
     }
 
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
 //        menuInflater.inflate(R.menu.menu_transactions_fb, menu)
 //        return true
+
+        super.onCreateOptionsMenu(menu)
 
         // Check if the current flavor is fbTransactionsOnly
         if (BuildConfig.FLAVOR == "fbTransactionsOnly") {

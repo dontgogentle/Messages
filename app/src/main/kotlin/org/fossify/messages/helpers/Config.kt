@@ -13,7 +13,17 @@ class Config(context: Context) : BaseConfig(context) {
         const val DEFAULT_ACTIVITY_TRANSACTIONS = 1
         const val DEFAULT_ACTIVITY_TRANSACTIONS_FB = 2
         const val DEFAULT_ACTIVITY = "default_activity"
+
+        // Site Name Configuration
+        const val SITE_J1 = "J1"
+        const val SITE_J5 = "J5"
+        const val SITE_RAZZAK_GARDEN = "RazzakGarden"
+        private const val SELECTED_SITE_NAME = "selected_site_name"
     }
+
+    var selectedSiteName: String
+        get() = prefs.getString(SELECTED_SITE_NAME, SITE_RAZZAK_GARDEN) ?: SITE_RAZZAK_GARDEN
+        set(siteName) = prefs.edit().putString(SELECTED_SITE_NAME, siteName).apply()
 
     fun saveUseSIMIdAtNumber(number: String, SIMId: Int) {
         prefs.edit().putInt(USE_SIM_ID_PREFIX + number, SIMId).apply()

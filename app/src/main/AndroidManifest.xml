@@ -186,6 +186,14 @@
             android:label="@string/conversation_details"
             android:parentActivityName=".activities.ThreadActivity" />
 
+        <!-- New Activity for Site Room Details -->
+        <activity
+            android:name=".activities.SiteRoomDetailsActivity"
+            android:exported="false"
+            android:label="Room Details" 
+            android:parentActivityName=".activities.MainActivity" /> <!-- Set appropriate parent -->
+
+
         <service
             android:name=".services.HeadlessSmsSendService"
             android:exported="true"
