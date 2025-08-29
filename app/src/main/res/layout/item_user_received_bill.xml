@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="?attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/textViewReceivedBillDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        tools:text="Rent March" />
+
+    <TextView
+        android:id="@+id/textViewReceivedCollectedAmount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        tools:text="Collected: 5500" />
+
+    <TextView
+        android:id="@+id/textViewReceivedCollectedDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        tools:text="Collected On: 12/03/2025" />
+
+    <TextView
+        android:id="@+id/textViewReceivedOriginalAmount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        tools:text="Original Amount: 5500" />
+
+    <TextView
+        android:id="@+id/textViewReceivedDueDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        tools:text="Original Due Date: 01-03-2025" />
+
+    <TextView
+        android:id="@+id/textViewReceivedNotes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:layout_marginTop="4dp"
+        tools:text="Notes: gpay business" />
+
+    <TextView
+        android:id="@+id/textViewReceivedBillTag"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="?android:attr/textColorSecondary"
+        tools:text="Tag: 2025-03-21" />
+
+</LinearLayout>

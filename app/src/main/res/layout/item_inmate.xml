@@ -28,11 +28,19 @@
             android:layout_height="wrap_content"
             android:src="@android:drawable/ic_menu_agenda"
             app:tint="?android:attr/textColorSecondary"
-            android:contentDescription="View Bills"
+            android:contentDescription="View Pending Bills"
             android:padding="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"/>
-            <!-- Use a more appropriate icon later -->
-            <!-- tint allows the icon to adapt to light/dark themes, remove if your icon has its own colors -->
+
+        <ImageView
+            android:id="@+id/imageViewReceivedBillsIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_menu_myplaces"
+            app:tint="?android:attr/textColorSecondary"
+            android:contentDescription="View Received Bills"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
     </LinearLayout>
 
     <TextView

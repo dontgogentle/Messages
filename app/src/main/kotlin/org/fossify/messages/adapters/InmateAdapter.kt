@@ -125,6 +125,17 @@ class InmateAdapter(private val currentSite: String) : ListAdapter<RoomDisplayIt
                 }
                 context.startActivity(intent)
             }
+
+            // Set OnClickListener for the received bills icon
+            binding.imageViewReceivedBillsIcon.setOnClickListener {
+                val context = it.context
+                val intent = Intent(context, org.fossify.messages.activities.UserReceivedBillsActivity::class.java).apply {
+                    putExtra("USER_ID", inmate.id)
+                    putExtra("SITE_NAME", currentSite)
+                    putExtra("INMATE_NAME", inmate.name)
+                }
+                context.startActivity(intent)
+            }
         }
 
         // Helper function to get default text color from theme (optional, adjust as needed)

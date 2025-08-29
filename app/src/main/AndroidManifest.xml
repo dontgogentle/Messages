@@ -199,6 +199,11 @@
             android:label="User Bills" 
             android:parentActivityName=".activities.SiteRoomDetailsActivity" />
 
+        <activity
+            android:name=".activities.UserReceivedBillsActivity"
+            android:exported="false"
+            android:label="Received Bills"
+            android:parentActivityName=".activities.SiteRoomDetailsActivity" />
 
         <service
             android:name=".services.HeadlessSmsSendService"
